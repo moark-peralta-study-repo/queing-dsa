@@ -1,0 +1,52 @@
+# Gradle build output
+build/
+.gradle/
+gradle-app.setting
+
+# Gradle wrapper (optional - commit these if you want)
+# gradle/
+# gradlew
+# gradlew.bat
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# Application specific
+hospital.db
+*.sqlite
+*.sqlite3
+
+# Compiled output
+bin/
+out/
+target/
+*.class
+
+# Packaging
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# Test files
+test-output/
