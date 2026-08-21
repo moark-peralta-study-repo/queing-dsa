@@ -108,7 +108,7 @@ public class PatientDAO {
           middle_name = ?,
           birth_date = ?,
           sex = ?,
-          phone = ?,
+          phone = ?
         WHERE patient_id = ?
         """;
 
@@ -121,7 +121,7 @@ public class PatientDAO {
       statement.setString(5, patient.getBirthDate());
       statement.setString(6, patient.getSex());
       statement.setString(7, patient.getPhone());
-      statement.setInt(8, patient.getUserId());
+      statement.setInt(8, patient.getPatientId());
 
       statement.executeUpdate();
     } catch (SQLException e) {
