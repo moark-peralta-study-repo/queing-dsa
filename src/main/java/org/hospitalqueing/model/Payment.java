@@ -1,24 +1,24 @@
 package org.hospitalqueing.model;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 public class Payment {
   private int paymentId;
   private int queueId;
-  private int amount;
+  private double amount;
   private String paymentMethod;
   private String status;
-  private LocalTime paidAt;
+  private LocalDateTime paidAt;
 
   public Payment() {}
 
   public Payment(
       int paymentId,
       int queueId,
-      int amount,
+      double amount,
       String paymentMethod,
       String status,
-      LocalTime paidAt) {
+      LocalDateTime paidAt) {
     this.paymentId = paymentId;
     this.queueId = queueId;
     this.amount = amount;
@@ -43,11 +43,11 @@ public class Payment {
     this.queueId = queueId;
   }
 
-  public int getAmount() {
+  public double getAmount() {
     return amount;
   }
 
-  public void setAmount(int amount) {
+  public void setAmount(double amount) {
     this.amount = amount;
   }
 
@@ -67,11 +67,11 @@ public class Payment {
     this.status = status;
   }
 
-  public LocalTime getPaidAt() {
+  public LocalDateTime getPaidAt() {
     return paidAt;
   }
 
-  public void setPaidAt(LocalTime paidAt) {
+  public void setPaidAt(LocalDateTime paidAt) {
     this.paidAt = paidAt;
   }
 }
