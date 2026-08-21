@@ -2,7 +2,7 @@ package org.hospitalqueing.model;
 
 public class Service {
   private int serviceId;
-  private int departmendId;
+  private int departmentId;
   private String serviceName;
   private int avgServiceMinutes;
   private boolean isActive;
@@ -11,12 +11,12 @@ public class Service {
 
   public Service(
       int serviceId,
-      int departmendId,
+      int departmentId,
       String serviceName,
       int avgServiceMinutes,
       boolean isActive) {
     this.serviceId = serviceId;
-    this.departmendId = departmendId;
+    this.departmentId = departmentId;
     this.serviceName = serviceName;
     this.avgServiceMinutes = avgServiceMinutes;
     this.isActive = isActive;
@@ -30,12 +30,12 @@ public class Service {
     this.serviceId = serviceId;
   }
 
-  public int getDepartmendId() {
-    return departmendId;
+  public int getDepartmentId() {
+    return departmentId;
   }
 
-  public void setDepartmendId(int departmendId) {
-    this.departmendId = departmendId;
+  public void setDepartmentId(int departmentId) {
+    this.departmentId = departmentId;
   }
 
   public String getServiceName() {
