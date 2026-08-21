@@ -1,27 +1,29 @@
 package org.hospitalqueing.model;
 
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 
 public class Notification {
   private int notificationId;
   private int patientId;
+  private Integer queueId;
   private String channel;
   private String message;
-
   private String status;
-  private LocalTime sentAt;
+  private LocalDateTime sentAt;
 
   public Notification() {}
 
   public Notification(
       int notificationId,
       int patientId,
+      Integer queueId,
       String channel,
       String message,
       String status,
-      LocalTime sentAt) {
+      LocalDateTime sentAt) {
     this.notificationId = notificationId;
     this.patientId = patientId;
+    this.queueId = queueId;
     this.channel = channel;
     this.message = message;
     this.status = status;
@@ -42,6 +44,14 @@ public class Notification {
 
   public void setPatientId(int patientId) {
     this.patientId = patientId;
+  }
+
+  public Integer getQueueId() {
+    return queueId;
+  }
+
+  public void setQueueId(Integer queueId) {
+    this.queueId = queueId;
   }
 
   public String getChannel() {
@@ -68,11 +78,11 @@ public class Notification {
     this.status = status;
   }
 
-  public LocalTime getSentAt() {
+  public LocalDateTime getSentAt() {
     return sentAt;
   }
 
-  public void setSentAt(LocalTime sentAt) {
+  public void setSentAt(LocalDateTime sentAt) {
     this.sentAt = sentAt;
   }
 }
