@@ -1,0 +1,164 @@
+package org.hospitalqueing.dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hospitalqueing.database.DatabaseConnection;
+import org.hospitalqueing.model.Patient;
+
+public class PatientDAO {
+
+  public void save(Patient patient) {
+    String sql =
+        """
+          INSERT INTO patients (
+            patient_id,
+            user_id,
+            first_name,
+            last_name,
+            middle_name,
+            birth_date,
+            sex,
+            phone
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+      statement.setInt(1, patient.getPatientId());
+      statement.setInt(2, patient.getUserId());
+      statement.setString(3, patient.getFirstName());
+      statement.setString(4, patient.getLastName());
+      statement.setString(5, patient.getMiddleName());
+      statement.setString(6, patient.getBirthDate());
+      statement.setString(7, patient.getSex());
+      statement.setString(8, patient.getPhone());
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public Patient findById(int patientId) {
+
+    String sql =
+        """
+        SELECT *
+        FROM patients
+        WHERE patient_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, patientId);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+
+        if (resultSet.next()) {
+          return mapPatient(resultSet);
+        }
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    return null;
+  }
+
+  public List<Patient> findAll() {
+    String sql =
+        """
+          SELECT *
+          FROM patients
+        """;
+
+    List<Patient> patients = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        patients.add(mapPatient(resultSet));
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    return patients;
+  }
+
+  public void update(Patient patient) {
+    String sql =
+        """
+          UPDATE patients
+          SET user_id = ?,
+          first_name = ?,
+          last_name = ?,
+          middle_name = ?,
+          birth_date = ?,
+          sex = ?,
+          phone = ?,
+        WHERE patient_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+      statement.setInt(1, patient.getUserId());
+      statement.setString(2, patient.getFirstName());
+      statement.setString(3, patient.getLastName());
+      statement.setString(4, patient.getMiddleName());
+      statement.setString(5, patient.getBirthDate());
+      statement.setString(6, patient.getSex());
+      statement.setString(7, patient.getPhone());
+      statement.setInt(8, patient.getUserId());
+
+      statement.executeUpdate();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public void delete(int patientId) {
+    String sql =
+        """
+          DELETE FROM patients
+          WHERE patient_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+      statement.setInt(1, patientId);
+
+      statement.executeUpdate();
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private Patient mapPatient(ResultSet resultSet) throws SQLException {
+
+    Patient patient = new Patient();
+
+    patient.setPatientId(resultSet.getInt("patient_id"));
+    patient.setUserId(resultSet.getInt("user_id"));
+    patient.setFirstName(resultSet.getString("first_name"));
+    patient.setLastName(resultSet.getString("last_name"));
+    patient.setMiddleName(resultSet.getString("middle_name"));
+    patient.setBirthDate(resultSet.getString("birth_date"));
+    patient.setSex(resultSet.getString("sex"));
+    patient.setPhone(resultSet.getString("phone"));
+
+    return patient;
+  }
+}
