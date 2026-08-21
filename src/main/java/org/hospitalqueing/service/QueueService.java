@@ -8,7 +8,7 @@ public class QueueService {
   private final QueueEntryDAO queueEntryDAO;
 
   QueueService(QueueEntryDAO queueEntryDAO) {
-    this.queueEntryDAO = new QueueEntryDAO();
+    this.queueEntryDAO = queueEntryDAO;
   }
 
   public void save(QueueEntry queueEntry) {
