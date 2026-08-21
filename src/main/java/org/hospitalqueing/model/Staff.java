@@ -7,11 +7,11 @@ public class Staff {
   private String firstName;
   private String lastName;
 
-  private int departmentId;
+  private Integer departmentId;
 
   public Staff() {}
 
-  public Staff(int staffId, int userId, String firstName, String lastName, int departmentId) {
+  public Staff(int staffId, int userId, String firstName, String lastName, Integer departmentId) {
     this.staffId = staffId;
     this.userId = userId;
     this.firstName = firstName;
@@ -51,11 +51,11 @@ public class Staff {
     this.lastName = lastName;
   }
 
-  public int getDepartmentId() {
+  public Integer getDepartmentId() {
     return departmentId;
   }
 
-  public void setDepartmentId(int departmentId) {
+  public void setDepartmentId(Integer departmentId) {
     this.departmentId = departmentId;
   }
 }
