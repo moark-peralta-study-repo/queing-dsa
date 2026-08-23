@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.hospitalqueing.database.DatabaseConnection;
 import org.hospitalqueing.model.User;
@@ -112,6 +114,29 @@ public class UserDAO {
     } catch (SQLException e) {
       e.printStackTrace();
     }
+  }
+
+  public List<User> findAll() {
+    String sql =
+        """
+        SELECT * FROM users
+        """;
+
+    List<User> users = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        users.add(mapUser(resultSet));
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    return users;
   }
 
   public User mapUser(ResultSet resultSet) throws SQLException {
