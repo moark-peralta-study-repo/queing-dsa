@@ -3,9 +3,10 @@ package org.hospitalqueing.model;
 import java.time.LocalDateTime;
 
 public class QueueEvent {
+
   private int eventId;
   private int queueId;
-  private int staffId;
+  private Integer staffId;
   private String eventType;
   private String notes;
   private LocalDateTime createdAt;
@@ -19,6 +20,7 @@ public class QueueEvent {
       String eventType,
       String notes,
       LocalDateTime createdAt) {
+
     this.eventId = eventId;
     this.queueId = queueId;
     this.staffId = staffId;
@@ -43,11 +45,11 @@ public class QueueEvent {
     this.queueId = queueId;
   }
 
-  public int getStaffId() {
+  public Integer getStaffId() {
     return staffId;
   }
 
-  public void setStaffId(int staffId) {
+  public void setStaffId(Integer staffId) {
     this.staffId = staffId;
   }
 
