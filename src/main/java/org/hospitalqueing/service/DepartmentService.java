@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Department;
 public class DepartmentService {
   private final DepartmentDAO departmentDAO;
 
-  DepartmentService(DepartmentDAO departmentDAO) {
+  public DepartmentService(DepartmentDAO departmentDAO) {
     this.departmentDAO = departmentDAO;
   }
 

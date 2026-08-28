@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Notification;
 public class NotificationService {
   private final NotificationDAO notificationDAO;
 
-  NotificationService(NotificationDAO notificationDAO) {
+  public NotificationService(NotificationDAO notificationDAO) {
     this.notificationDAO = notificationDAO;
   }
 

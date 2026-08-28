@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Payment;
 public class PaymentService {
   private final PaymentDAO paymentDAO;
 
-  PaymentService(PaymentDAO paymentDAO) {
+  public PaymentService(PaymentDAO paymentDAO) {
     this.paymentDAO = paymentDAO;
   }
 

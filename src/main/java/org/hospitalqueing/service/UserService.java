@@ -8,7 +8,7 @@ import org.hospitalqueing.model.User;
 public class UserService {
   private final UserDAO userDAO;
 
-  UserService(UserDAO userDAO) {
+  public UserService(UserDAO userDAO) {
     this.userDAO = userDAO;
   }
 

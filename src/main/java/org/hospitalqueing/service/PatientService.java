@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Patient;
 public class PatientService {
   PatientDAO patientDAO;
 
-  PatientService(PatientDAO patientDAO) {
+  public PatientService(PatientDAO patientDAO) {
     this.patientDAO = patientDAO;
   }
 
