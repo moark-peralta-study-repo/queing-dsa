@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Service;
 public class ServiceCatalogService {
   private final ServiceDAO serviceDAO;
 
-  ServiceCatalogService(ServiceDAO serviceDAO) {
+  public ServiceCatalogService(ServiceDAO serviceDAO) {
     this.serviceDAO = serviceDAO;
   }
 

@@ -8,7 +8,7 @@ import org.hospitalqueing.model.QueueEvent;
 public class QueueEventService {
   private final QueueEventDAO queueEventDAO;
 
-  QueueEventService(QueueEventDAO queueEventDAO) {
+  public QueueEventService(QueueEventDAO queueEventDAO) {
     this.queueEventDAO = queueEventDAO;
   }
 

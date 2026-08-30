@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Feedback;
 public class FeedbackService {
   private final FeedbackDAO feedbackDAO;
 
-  FeedbackService(FeedbackDAO feedbackDAO) {
+  public FeedbackService(FeedbackDAO feedbackDAO) {
     this.feedbackDAO = feedbackDAO;
   }
 

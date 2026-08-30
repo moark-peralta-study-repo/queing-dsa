@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Appointment;
 public class AppointmentService {
   private final AppointmentDAO appointmentDAO;
 
-  AppointmentService(AppointmentDAO appointmentDAO) {
+  public AppointmentService(AppointmentDAO appointmentDAO) {
     this.appointmentDAO = appointmentDAO;
   }
 

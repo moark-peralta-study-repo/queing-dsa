@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Counter;
 public class CounterService {
   private final CounterDAO counterDAO;
 
-  CounterService(CounterDAO counterDAO) {
+  public CounterService(CounterDAO counterDAO) {
     this.counterDAO = counterDAO;
   }
 

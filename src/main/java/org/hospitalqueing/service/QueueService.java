@@ -8,7 +8,7 @@ import org.hospitalqueing.model.QueueEntry;
 public class QueueService {
   private final QueueEntryDAO queueEntryDAO;
 
-  QueueService(QueueEntryDAO queueEntryDAO) {
+  public QueueService(QueueEntryDAO queueEntryDAO) {
     this.queueEntryDAO = queueEntryDAO;
   }
 

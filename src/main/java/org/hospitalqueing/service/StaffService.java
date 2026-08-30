@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Staff;
 public class StaffService {
   private final StaffDAO staffDAO;
 
-  StaffService(StaffDAO staffDAO) {
+  public StaffService(StaffDAO staffDAO) {
     this.staffDAO = staffDAO;
   }
 

@@ -8,7 +8,7 @@ import org.hospitalqueing.model.Role;
 public class RoleService {
   private final RoleDAO roleDAO;
 
-  RoleService(RoleDAO roleDAO) {
+  public RoleService(RoleDAO roleDAO) {
     this.roleDAO = roleDAO;
   }
 
