@@ -116,6 +116,34 @@ public class QueueEntryDAO {
     return null;
   }
 
+  public QueueEntry findByQrToken(String qrToken) {
+
+    String sql =
+        """
+          SELECT *
+          FROM queue_entries
+          WHERE qr_token = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setString(1, qrToken);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+
+        if (resultSet.next()) {
+          return mapQueueEntry(resultSet);
+        }
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    return null;
+  }
+
   public List<QueueEntry> findAll() {
 
     String sql =
