@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hospitalqueing.database.DatabaseConnection;
+import org.hospitalqueing.database.DatabaseException;
 import org.hospitalqueing.model.QueueEntry;
 
 public class QueueEntryDAO {
@@ -84,7 +85,7 @@ public class QueueEntryDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 
@@ -110,7 +111,7 @@ public class QueueEntryDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return null;
@@ -138,7 +139,7 @@ public class QueueEntryDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return null;
@@ -163,7 +164,7 @@ public class QueueEntryDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return queueEntries;
@@ -233,7 +234,7 @@ public class QueueEntryDAO {
       statement.executeUpdate();
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 
@@ -253,7 +254,7 @@ public class QueueEntryDAO {
       statement.executeUpdate();
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 

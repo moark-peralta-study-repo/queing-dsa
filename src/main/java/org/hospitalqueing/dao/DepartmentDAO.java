@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hospitalqueing.database.DatabaseConnection;
+import org.hospitalqueing.database.DatabaseException;
 import org.hospitalqueing.model.Department;
 
 public class DepartmentDAO {
@@ -30,7 +31,7 @@ public class DepartmentDAO {
 
       stmt.executeUpdate();
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 
@@ -53,7 +54,7 @@ public class DepartmentDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return null;
@@ -76,7 +77,7 @@ public class DepartmentDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return departments;
@@ -97,7 +98,7 @@ public class DepartmentDAO {
       stmt.executeUpdate();
 
     } catch (Exception e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 
@@ -120,7 +121,7 @@ public class DepartmentDAO {
 
       stmt.executeUpdate();
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 
