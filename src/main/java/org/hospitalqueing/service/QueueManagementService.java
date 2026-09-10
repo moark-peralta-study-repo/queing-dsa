@@ -8,18 +8,36 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import org.hospitalqueing.dao.CounterDAO;
+import org.hospitalqueing.dao.DepartmentDAO;
 import org.hospitalqueing.dao.QueueEntryDAO;
 import org.hospitalqueing.dao.QueueEventDAO;
+import org.hospitalqueing.dao.ServiceDAO;
+import org.hospitalqueing.model.Counter;
+import org.hospitalqueing.model.Department;
 import org.hospitalqueing.model.QueueEntry;
 import org.hospitalqueing.model.QueueEvent;
+import org.hospitalqueing.model.Service;
+import org.hospitalqueing.model.TicketStatus;
 
 public class QueueManagementService {
   private final QueueEntryDAO queueEntryDAO;
   private final QueueEventDAO queueEventDAO;
+  private final ServiceDAO serviceDAO;
+  private final DepartmentDAO departmentDAO;
+  private final CounterDAO counterDAO;
 
-  public QueueManagementService(QueueEntryDAO queueEntryDAO, QueueEventDAO queueEventDAO) {
+  public QueueManagementService(
+      QueueEntryDAO queueEntryDAO,
+      QueueEventDAO queueEventDAO,
+      ServiceDAO serviceDAO,
+      DepartmentDAO departmentDAO,
+      CounterDAO counterDAO) {
     this.queueEntryDAO = queueEntryDAO;
     this.queueEventDAO = queueEventDAO;
+    this.serviceDAO = serviceDAO;
+    this.departmentDAO = departmentDAO;
+    this.counterDAO = counterDAO;
   }
 
   public QueueEntry joinQueue(QueueEntry entry) {
@@ -33,7 +51,7 @@ public class QueueManagementService {
     entry.setQueueNumber(nextNumber);
 
     if (entry.getPriorityType() == null || entry.getPriorityType().isEmpty()) {
-      entry.setPriorityType("NORMAL");
+      entry.setPriorityType("REGULAR");
     }
     if (entry.getStatus() == null || entry.getStatus().isEmpty()) {
       entry.setStatus("WAITING");
@@ -130,8 +148,71 @@ public class QueueManagementService {
                 e.getStatus().equals("WAITING")
                     || e.getStatus().equals("CALLED")
                     || e.getStatus().equals("IN_SERVICE"))
-        .sorted(Comparator.comparing(QueueEntry::getJoinedAt))
+        .sorted(
+            Comparator.comparingInt((QueueEntry e) -> priorityRank(e.getPriorityType()))
+                .thenComparing(QueueEntry::getJoinedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
         .toList();
+  }
+
+  public static int priorityRank(String priorityType) {
+    return switch (priorityType == null ? "" : priorityType) {
+      case "EMERGENCY" -> 0;
+      case "APPOINTMENT" -> 1;
+      case "PWD" -> 2;
+      case "SENIOR" -> 3;
+      default -> 4;
+    };
+  }
+
+  public TicketStatus getTicketStatus(String qrToken) {
+    QueueEntry entry = queueEntryDAO.findByQrToken(qrToken);
+    if (entry == null) {
+      return null;
+    }
+
+    Department department = departmentDAO.findById(entry.getDepartmentId());
+    Service service = serviceDAO.findById(entry.getServiceId());
+    Counter counter = entry.getCounterId() != null ? counterDAO.findById(entry.getCounterId()) : null;
+
+    List<QueueEntry> active = getActiveQueue(entry.getDepartmentId());
+
+    int ahead = 0;
+    boolean waiting = "WAITING".equals(entry.getStatus());
+    if (waiting) {
+      for (QueueEntry e : active) {
+        if (e.getQueueId() == entry.getQueueId()) {
+          break;
+        }
+        ahead++;
+      }
+    }
+
+    Integer currentNumber = null;
+    for (QueueEntry e : active) {
+      if ("IN_SERVICE".equals(e.getStatus()) || "CALLED".equals(e.getStatus())) {
+        currentNumber = e.getQueueNumber();
+        break;
+      }
+    }
+
+    int avgMinutes =
+        service != null && service.getAvgServiceMinutes() > 0 ? service.getAvgServiceMinutes() : 10;
+    int eta = waiting ? ahead * avgMinutes : 0;
+
+    return new TicketStatus(
+        entry.getQrToken(),
+        entry.getQueueId(),
+        entry.getQueueNumber(),
+        department != null ? department.getDepartmentName() : null,
+        service != null ? service.getServiceName() : null,
+        entry.getStatus(),
+        entry.getPriorityType(),
+        currentNumber,
+        ahead,
+        eta,
+        counter != null ? counter.getCounterName() : null,
+        entry.getJoinedAt(),
+        entry.getCalledAt());
   }
 
   private void logEvent(int queueId, Integer staffId, String eventType, String notes) {
