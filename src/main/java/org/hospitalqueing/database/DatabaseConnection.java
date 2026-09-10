@@ -369,8 +369,7 @@ public class DatabaseConnection {
       System.out.println("Database initialized successfully.");
 
     } catch (SQLException e) {
-      System.err.println("Database initialization failed.");
-      e.printStackTrace();
+      throw new DatabaseException("Database initialization failed", e);
     }
   }
 }

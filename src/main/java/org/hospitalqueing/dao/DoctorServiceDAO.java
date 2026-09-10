@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hospitalqueing.database.DatabaseConnection;
+import org.hospitalqueing.database.DatabaseException;
 import org.hospitalqueing.model.DoctorService;
 
 public class DoctorServiceDAO {
@@ -32,7 +33,7 @@ public class DoctorServiceDAO {
       statement.executeUpdate();
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 
@@ -55,7 +56,7 @@ public class DoctorServiceDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return doctorServices;
@@ -85,7 +86,7 @@ public class DoctorServiceDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return doctorServices;
@@ -115,7 +116,7 @@ public class DoctorServiceDAO {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
 
     return doctorServices;
@@ -139,7 +140,7 @@ public class DoctorServiceDAO {
       statement.executeUpdate();
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      throw new DatabaseException("Database operation failed", e);
     }
   }
 

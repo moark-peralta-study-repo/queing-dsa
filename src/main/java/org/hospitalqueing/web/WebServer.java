@@ -31,11 +31,23 @@ public class WebServer {
 
     Javalin app = Javalin.create();
 
-    app.before(ctx -> {
-      ctx.header("Access-Control-Allow-Origin", "*");
-      ctx.header("Access-Control-Allow-Methods", "GET, OPTIONS");
-      ctx.header("Access-Control-Allow-Headers", "Content-Type");
-    });
+    app.exception(
+        DatabaseException.class,
+        (e, ctx) -> {
+          ctx.status(500);
+          ctx.contentType("application/json");
+          String detail = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+          ctx.result(
+              gson.toJson(
+                  Map.of("error", "database error", "detail", detail == null ? "" : detail)));
+        });
+
+    app.before(
+        ctx -> {
+          ctx.header("Access-Control-Allow-Origin", "*");
+          ctx.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+          ctx.header("Access-Control-Allow-Headers", "Content-Type");
+        });
 
     app.get(
         "/api/health",
