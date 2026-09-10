@@ -5,16 +5,18 @@ import java.util.Map;
 
 import com.google.gson.Gson;
 
-import io.javalin.Javalin;
 import org.hospitalqueing.dao.CounterDAO;
 import org.hospitalqueing.dao.DepartmentDAO;
 import org.hospitalqueing.dao.QueueEntryDAO;
 import org.hospitalqueing.dao.QueueEventDAO;
 import org.hospitalqueing.dao.ServiceDAO;
+import org.hospitalqueing.database.DatabaseException;
 import org.hospitalqueing.model.Department;
 import org.hospitalqueing.model.QueueEntry;
 import org.hospitalqueing.model.TicketStatus;
 import org.hospitalqueing.service.QueueManagementService;
+
+import io.javalin.Javalin;
 
 public class WebServer {
 
@@ -27,7 +29,8 @@ public class WebServer {
     DepartmentDAO departmentDAO = new DepartmentDAO();
     CounterDAO counterDAO = new CounterDAO();
     QueueManagementService queueManagementService =
-        new QueueManagementService(queueEntryDAO, queueEventDAO, serviceDAO, departmentDAO, counterDAO);
+        new QueueManagementService(
+            queueEntryDAO, queueEventDAO, serviceDAO, departmentDAO, counterDAO);
 
     Javalin app = Javalin.create();
 
