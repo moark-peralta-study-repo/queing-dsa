@@ -50,3 +50,7 @@ target/
 
 # Test files
 test-output/
+
+# Mobile app build artifacts not covered by mobile/.gitignore
+mobile/android/.gradle/
+mobile/android/build/
