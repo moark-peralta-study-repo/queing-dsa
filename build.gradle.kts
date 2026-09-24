@@ -28,6 +28,8 @@ dependencies {
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("io.javalin:javalin:6.7.0")
     implementation("org.slf4j:slf4j-nop:2.0.16")
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:javase:3.5.3")
     // This dependency is used by the application.
     implementation(libs.guava)
 }
