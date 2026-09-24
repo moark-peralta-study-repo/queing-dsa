@@ -54,3 +54,9 @@ test-output/
 # Mobile app build artifacts not covered by mobile/.gitignore
 mobile/android/.gradle/
 mobile/android/build/
+# Flutter files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+build/
