@@ -48,8 +48,15 @@ public class WebServer {
     app.before(
         ctx -> {
           ctx.header("Access-Control-Allow-Origin", "*");
-          ctx.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+          ctx.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
           ctx.header("Access-Control-Allow-Headers", "Content-Type");
+        });
+
+    app.options(
+        "/*",
+        ctx -> {
+          ctx.status(200);
+          ctx.result("");
         });
 
     app.get(
@@ -87,6 +94,37 @@ public class WebServer {
           List<Department> departments = departmentDAO.findAll();
           ctx.contentType("application/json");
           ctx.result(gson.toJson(departments));
+        });
+
+    app.post(
+        "/api/ticket",
+        ctx -> {
+          QueueEntry entry = gson.fromJson(ctx.body(), QueueEntry.class);
+          QueueEntry saved = queueManagementService.joinQueue(entry);
+          ctx.status(201);
+          ctx.contentType("application/json");
+          ctx.result(gson.toJson(saved));
+        });
+
+    app.post(
+        "/api/queue/{departmentId}/advance",
+        ctx -> {
+          int departmentId = Integer.parseInt(ctx.pathParam("departmentId"));
+          QueueEntry next =
+              queueManagementService.getActiveQueue(departmentId).stream()
+                  .filter(e -> "WAITING".equals(e.getStatus()))
+                  .findFirst()
+                  .orElse(null);
+          if (next == null) {
+            ctx.status(404);
+            ctx.contentType("application/json");
+            ctx.result(gson.toJson(Map.of("error", "no waiting tickets in this queue")));
+            return;
+          }
+
+          queueManagementService.advance(next.getQueueId(), null);
+          ctx.contentType("application/json");
+          ctx.result(gson.toJson(queueManagementService.getTicketStatus(next.getQrToken())));
         });
 
     app.start(port);
