@@ -143,10 +143,16 @@ public class UserDAO {
   public User mapUser(ResultSet resultSet) throws SQLException {
     User user = new User();
 
+    user.setUserId(resultSet.getInt("user_id"));
     user.setUsername(resultSet.getString("username"));
     user.setPasswordHash(resultSet.getString("password_hash"));
     user.setRoleId(resultSet.getInt("role_id"));
     user.setActive(resultSet.getInt("is_active") == 1);
+
+    String createdAt = resultSet.getString("created_at");
+    if (createdAt != null) {
+      user.setCreatedAt(java.time.LocalDateTime.parse(createdAt.replace(" ", "T")));
+    }
 
     return user;
   }
