@@ -80,6 +80,7 @@ public class LoginPanel extends JPanel {
         loginBtn.setForeground(WHITE);
         loginBtn.setFont(new Font("SansSerif", Font.BOLD, 14));
         loginBtn.setFocusPainted(false);
+        loginBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         registerLink = new JLabel("<html><u>Don't have an account? Register</u></html>");
         registerLink.setForeground(PRIMARY_BLUE);
@@ -118,12 +119,13 @@ public class LoginPanel extends JPanel {
             }
 
             try {
-                AuthenticationService authService = new AuthenticationService(new UserDAO());
+                UserDAO userDAO = new UserDAO();
+                AuthenticationService authService = new AuthenticationService(userDAO);
                 User loggedInUser = authService.login(username, password);
 
                 if (loggedInUser != null) {
                     parentFrame.setLoggedInUser(loggedInUser);
-                    clearFields(); // Clears the username and password fields upon successful login
+                    clearFields(); 
                     JOptionPane.showMessageDialog(this, "Login Successful! Welcome back, " + loggedInUser.getUsername());
                     
                     if (loggedInUser.getRoleId() == 1) {
@@ -141,7 +143,6 @@ public class LoginPanel extends JPanel {
         });
     }
 
-    // Clears the fields when called
     public void clearFields() {
         usernameField.setText("");
         passwordField.setText("");

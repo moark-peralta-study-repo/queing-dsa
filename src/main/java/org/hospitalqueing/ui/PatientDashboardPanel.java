@@ -3,6 +3,7 @@ package org.hospitalqueing.ui;
 import net.miginfocom.swing.MigLayout;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 
 public class PatientDashboardPanel extends JPanel {
 
@@ -23,7 +24,7 @@ public class PatientDashboardPanel extends JPanel {
         setBackground(WHITE);
 
         // --- 1. LOGGED-IN NAVBAR ---
-        JPanel loggedInNav = new JPanel(new MigLayout("insets 15 30 15 30, aligny center", "[left]push[center]10[center]10[right]", "[center]"));
+        JPanel loggedInNav = new JPanel(new MigLayout("insets 15 20 15 20, aligny center", "[left]push[center]10[center]10[right]", "[center]"));
         loggedInNav.setBackground(WHITE);
 
         JPanel brandPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -41,7 +42,7 @@ public class PatientDashboardPanel extends JPanel {
         JLabel aboutNav = createNavLink("About");
         JLabel servicesNav = createNavLink("Services");
 
-        JPanel linksPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 0));
+        JPanel linksPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         linksPanel.setOpaque(false);
         linksPanel.add(homeNav);
         linksPanel.add(aboutNav);
@@ -52,9 +53,9 @@ public class PatientDashboardPanel extends JPanel {
         
         logoutBtn = new JButton("Logout");
         styleSecondaryButton(logoutBtn);
-        logoutBtn.setPreferredSize(new Dimension(85, 30));
+        logoutBtn.setPreferredSize(new Dimension(80, 30));
 
-        JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         rightControls.setOpaque(false);
         rightControls.add(notifIconBtn);
         rightControls.add(profileIconBtn);
@@ -72,12 +73,17 @@ public class PatientDashboardPanel extends JPanel {
 
         add(topContainer, BorderLayout.NORTH);
 
-        // --- 2. SCROLLABLE CONTENT AREA (Tuned dimensions to fit perfectly without auto-scrolling) ---
-        scrollContentPanel = new JPanel(new MigLayout("wrap, fillx, insets 15 40 15 40", "[grow, fill]", ""));
+        // --- 2. SCROLLABLE CONTENT AREA ---
+        scrollContentPanel = new JPanel(new MigLayout("wrap, fillx, insets 15 20 20 20", "[grow, fill]", "")) {
+            @Override
+            public void scrollRectToVisible(Rectangle aRect) {
+                // Prevent automatic focus jumping from pulling down the scrollbar
+            }
+        };
         scrollContentPanel.setBackground(WHITE);
 
         // --- A. Appointment & Queue Buttons ---
-        JPanel actionButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 0));
+        JPanel actionButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         actionButtonPanel.setOpaque(false);
 
         appointmentBtn = new JButton("Appointment");
@@ -92,7 +98,7 @@ public class PatientDashboardPanel extends JPanel {
 
         // --- B. Welcome Banner ---
         JPanel bannerPanel = new JPanel(new GridBagLayout());
-        bannerPanel.setPreferredSize(new Dimension(700, 110)); // Adjusted to guarantee 600px window fit
+        bannerPanel.setPreferredSize(new Dimension(740, 135)); 
         bannerPanel.setBackground(LIGHT_BLUE);
         bannerPanel.setBorder(BorderFactory.createLineBorder(new Color(187, 222, 251), 1, true));
         
@@ -105,21 +111,21 @@ public class PatientDashboardPanel extends JPanel {
 
         // --- C. Select Hospital Service or Department Title ---
         JLabel sectionTitle = new JLabel("Select Hospital Service or Department");
-        sectionTitle.setFont(new Font("SansSerif", Font.BOLD, 18));
+        sectionTitle.setFont(new Font("SansSerif", Font.BOLD, 17));
         sectionTitle.setForeground(TEXT_DARK);
         scrollContentPanel.add(sectionTitle, "gapbottom 10");
 
         // --- D. Department Cards Grid ---
-        JPanel deptGrid = new JPanel(new MigLayout("wrap 3, fillx, gap 15 15", "[grow, fill][grow, fill][grow, fill]", ""));
+        JPanel deptGrid = new JPanel(new MigLayout("wrap 2, fill, gap 12 12", 
+            "[0:0, grow, fill][0:0, grow, fill]", ""));
         deptGrid.setOpaque(false);
 
-        // Standardized emojis for universal Windows font support
-        deptGrid.add(createDepartmentCard("🚑", "Emergency Care", "24/7 Trauma & Urgent Medical Services"));
-        deptGrid.add(createDepartmentCard("❤️", "Cardiology", "Heart Specialists, ECG & Diagnostics"));
-        deptGrid.add(createDepartmentCard("👶", "Pediatrics", "Child Care, Immunization & Wellness"));
-        deptGrid.add(createDepartmentCard("🩺", "General Surgery", "Outpatient & Specialized Procedures"));
-        deptGrid.add(createDepartmentCard("☢️", "Radiology", "X-Ray, CT Scan, MRI & Ultrasound Lab"));
-        deptGrid.add(createDepartmentCard("💊", "Pharmacy", "Fast-Track Prescription & Medicine Queue"));
+        deptGrid.add(createDepartmentCard("🚑", "Emergency Care", "24/7 Trauma & Urgent Medical Services", parentFrame));
+        deptGrid.add(createDepartmentCard("♥", "Cardiology", "Heart Specialists, ECG & Diagnostics", parentFrame)); // Clean, uniform symbol
+        deptGrid.add(createDepartmentCard("👶", "Pediatrics", "Child Care, Immunization & Wellness", parentFrame));
+        deptGrid.add(createDepartmentCard("💉", "General Surgery", "Outpatient & Specialized Procedures", parentFrame));
+        deptGrid.add(createDepartmentCard("🔬", "Radiology", "X-Ray, CT Scan, MRI & Ultrasound Lab", parentFrame));
+        deptGrid.add(createDepartmentCard("💊", "Pharmacy", "Fast-Track Prescription & Medicine Queue", parentFrame));
 
         scrollContentPanel.add(deptGrid, "growx");
 
@@ -128,9 +134,14 @@ public class PatientDashboardPanel extends JPanel {
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); 
-
+        
         add(scrollPane, BorderLayout.CENTER);
+
+        // Force scrollbar to stay locked firmly at the absolute top on load
+        SwingUtilities.invokeLater(() -> {
+            scrollPane.getVerticalScrollBar().setValue(0);
+            scrollPane.getViewport().setViewPosition(new Point(0, 0));
+        });
 
         // --- 3. WIRING ACTIONS ---
         logoutBtn.addActionListener(e -> {
@@ -148,32 +159,28 @@ public class PatientDashboardPanel extends JPanel {
         });
 
         appointmentBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Opening Appointment Module...");
+            parentFrame.showScreen("APPOINTMENT_PAGE");
         });
 
         queueBtn.addActionListener(e -> {
             JOptionPane.showMessageDialog(this, "Opening Queue Status Module...");
         });
-        
-        // Forces the scrollpane to always start exactly at the top just in case
-        SwingUtilities.invokeLater(() -> scrollPane.getVerticalScrollBar().setValue(0));
     }
 
-    // --- FIXED UI HELPERS ---
-    private JPanel createDepartmentCard(String iconSymbol, String title, String description) {
-        JPanel card = new JPanel(new MigLayout("wrap 2, insets 15 15 15 15", "[left]10[grow, fill]", "[]2[]"));
+    private JPanel createDepartmentCard(String iconSymbol, String title, String description, MainFrame parentFrame) {
+        JPanel card = new JPanel(new MigLayout("wrap 2, insets 20 14 20 14", "[left]10[grow, fill]", "[]4[]"));
         card.setBackground(new Color(248, 250, 252));
         card.setBorder(BorderFactory.createLineBorder(new Color(220, 226, 236), 1, true));
         card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         JLabel iconLbl = new JLabel(iconSymbol);
-        iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24)); // Explicitly request emoji font
+        iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 26)); 
 
         JLabel titleLbl = new JLabel(title);
         titleLbl.setFont(new Font("SansSerif", Font.BOLD, 15));
         titleLbl.setForeground(PRIMARY_BLUE);
 
-        JLabel descLbl = new JLabel("<html><body style='width: 140px'>" + description + "</body></html>");
+        JLabel descLbl = new JLabel("<html><body style='width: 210px'>" + description + "</body></html>");
         descLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
         descLbl.setForeground(new Color(100, 116, 139));
 
@@ -182,14 +189,14 @@ public class PatientDashboardPanel extends JPanel {
         card.add(descLbl);
 
         card.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) {
+            public void mouseEntered(MouseEvent e) {
                 card.setBackground(LIGHT_BLUE);
             }
-            public void mouseExited(java.awt.event.MouseEvent e) {
+            public void mouseExited(MouseEvent e) {
                 card.setBackground(new Color(248, 250, 252));
             }
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                JOptionPane.showMessageDialog(card, "Selected Department: " + title);
+            public void mouseClicked(MouseEvent e) {
+                parentFrame.showScreen("APPOINTMENT_PAGE");
             }
         });
 
@@ -203,16 +210,16 @@ public class PatientDashboardPanel extends JPanel {
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         
         label.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { label.setForeground(PRIMARY_BLUE); }
-            public void mouseExited(java.awt.event.MouseEvent e) { label.setForeground(TEXT_DARK); }
+            public void mouseEntered(MouseEvent e) { label.setForeground(PRIMARY_BLUE); }
+            public void mouseExited(MouseEvent e) { label.setForeground(TEXT_DARK); }
         });
         return label;
     }
 
     private JButton createIconButton(String text) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-        btn.setPreferredSize(new Dimension(40, 35));
+        btn.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
+        btn.setPreferredSize(new Dimension(36, 30));
         btn.setBackground(new Color(241, 245, 249));
         btn.setFocusPainted(false);
         btn.setBorder(null);
@@ -221,7 +228,7 @@ public class PatientDashboardPanel extends JPanel {
     }
 
     private void styleActionButton(JButton button) {
-        button.setPreferredSize(new Dimension(200, 42));
+        button.setPreferredSize(new Dimension(180, 38));
         button.setBackground(PRIMARY_BLUE);
         button.setForeground(WHITE);
         button.setFont(new Font("SansSerif", Font.BOLD, 14));

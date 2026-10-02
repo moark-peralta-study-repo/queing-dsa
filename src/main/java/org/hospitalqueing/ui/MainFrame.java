@@ -17,6 +17,7 @@ public class MainFrame extends JFrame {
     private LoginPanel loginCard;
     private RegisterPanel registerCard;
     private PatientDashboardPanel dashboardCard;
+    private AppointmentPanel appointmentCard;
     private JPanel topContainer; 
     private org.hospitalqueing.model.User loggedInUser;
 
@@ -75,11 +76,13 @@ public class MainFrame extends JFrame {
         loginCard = new LoginPanel(this);
         registerCard = new RegisterPanel();
         dashboardCard = new PatientDashboardPanel(this);
+        appointmentCard = new AppointmentPanel(this);
 
         mainContentPanel.add(homePage, "LANDING_PAGE");
         mainContentPanel.add(loginCard, "LOGIN_PAGE");
         mainContentPanel.add(registerCard, "REGISTER_PAGE");
         mainContentPanel.add(dashboardCard, "DASHBOARD_PAGE");
+        mainContentPanel.add(appointmentCard, "APPOINTMENT_PAGE");
 
         add(mainContentPanel, BorderLayout.CENTER);
 
@@ -125,13 +128,19 @@ public class MainFrame extends JFrame {
             }
 
             try {
-                org.hospitalqueing.service.AuthenticationService authService = new org.hospitalqueing.service.AuthenticationService(new org.hospitalqueing.dao.UserDAO());
-                org.hospitalqueing.service.UserService userService = new org.hospitalqueing.service.UserService(new org.hospitalqueing.dao.UserDAO());
-                org.hospitalqueing.service.PatientService patientService = new org.hospitalqueing.service.PatientService(new org.hospitalqueing.dao.PatientDAO());
+                org.hospitalqueing.dao.UserDAO userDAO = new org.hospitalqueing.dao.UserDAO();
+                org.hospitalqueing.dao.PatientDAO patientDAO = new org.hospitalqueing.dao.PatientDAO();
+
+                org.hospitalqueing.service.UserService userService = new org.hospitalqueing.service.UserService(userDAO);
+                org.hospitalqueing.service.PatientService patientService = new org.hospitalqueing.service.PatientService(patientDAO);
+                org.hospitalqueing.service.AuthenticationService authService = new org.hospitalqueing.service.AuthenticationService(userDAO);
+
+                org.hospitalqueing.controller.UserController userController = new org.hospitalqueing.controller.UserController(userService);
+                org.hospitalqueing.controller.PatientController patientController = new org.hospitalqueing.controller.PatientController(patientService);
 
                 String username = registerCard.getUsername().trim();
 
-                for (org.hospitalqueing.model.User u : userService.getAllUsers()) {
+                for (org.hospitalqueing.model.User u : userController.getAllUsers()) {
                     if (u.getUsername().equalsIgnoreCase(username)) {
                         JOptionPane.showMessageDialog(this, "This username is already registered. Please choose another or log in.", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
@@ -143,10 +152,10 @@ public class MainFrame extends JFrame {
                 newUser.setPasswordHash(authService.hashPassword(registerCard.getPassword()));
                 newUser.setRoleId(3); 
                 newUser.setActive(true);
-                userService.createUser(newUser);
+                userController.createUser(newUser);
 
                 int generatedUserId = -1;
-                for (org.hospitalqueing.model.User u : userService.getAllUsers()) {
+                for (org.hospitalqueing.model.User u : userController.getAllUsers()) {
                     if (u.getUsername().equalsIgnoreCase(username)) {
                         generatedUserId = u.getUserId();
                         break;
@@ -163,7 +172,7 @@ public class MainFrame extends JFrame {
                     patient.setSex(registerCard.getSex());
                     patient.setPhone(registerCard.getPhone().trim());
                     
-                    patientService.createPatient(patient);
+                    patientController.registerPatient(patient);
                 } else {
                     throw new RuntimeException("Could not resolve generated user ID for patient linking.");
                 }
@@ -184,6 +193,11 @@ public class MainFrame extends JFrame {
             topContainer.setVisible(true);
         } else {
             topContainer.setVisible(false);
+        }
+        
+        // Automatically clear login text boxes whenever the login screen is displayed
+        if ("LOGIN_PAGE".equals(screenName) && loginCard != null) {
+            loginCard.clearFields();
         }
     }
 
