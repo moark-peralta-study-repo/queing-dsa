@@ -18,6 +18,7 @@ public class MainFrame extends JFrame {
     private RegisterPanel registerCard;
     private PatientDashboardPanel dashboardCard;
     private AppointmentPanel appointmentCard;
+    private PatientQueuePanel patientQueueCard; // Elevated to class level
     private JPanel topContainer; 
     private org.hospitalqueing.model.User loggedInUser;
 
@@ -77,12 +78,22 @@ public class MainFrame extends JFrame {
         registerCard = new RegisterPanel();
         dashboardCard = new PatientDashboardPanel(this);
         appointmentCard = new AppointmentPanel(this);
+        
+        ProfilePanel profileCard = new ProfilePanel(this); 
+        AppointmentHistoryPanel historyCard = new AppointmentHistoryPanel(this);
+        StaffDashboardPanel staffDashboardCard = new StaffDashboardPanel(this);
+        
+        patientQueueCard = new PatientQueuePanel(this); // Now saves to class variable
 
         mainContentPanel.add(homePage, "LANDING_PAGE");
         mainContentPanel.add(loginCard, "LOGIN_PAGE");
         mainContentPanel.add(registerCard, "REGISTER_PAGE");
         mainContentPanel.add(dashboardCard, "DASHBOARD_PAGE");
         mainContentPanel.add(appointmentCard, "APPOINTMENT_PAGE");
+        mainContentPanel.add(profileCard, "PROFILE_PAGE");
+        mainContentPanel.add(historyCard, "HISTORY_PAGE");
+        mainContentPanel.add(staffDashboardCard, "ADMIN_DASHBOARD"); 
+        mainContentPanel.add(patientQueueCard, "QUEUE_STATUS_PAGE");
 
         add(mainContentPanel, BorderLayout.CENTER);
 
@@ -195,14 +206,41 @@ public class MainFrame extends JFrame {
             topContainer.setVisible(false);
         }
         
-        // Automatically clear login text boxes whenever the login screen is displayed
         if ("LOGIN_PAGE".equals(screenName) && loginCard != null) {
             loginCard.clearFields();
         }
+        
+        if ("PROFILE_PAGE".equals(screenName)) {
+            for (Component comp : mainContentPanel.getComponents()) {
+                if (comp instanceof ProfilePanel) {
+                    ((ProfilePanel) comp).loadUserData();
+                }
+            }
+        }
+        
+        if ("HISTORY_PAGE".equals(screenName)) {
+            for (Component comp : mainContentPanel.getComponents()) {
+                if (comp instanceof AppointmentHistoryPanel) {
+                    ((AppointmentHistoryPanel) comp).loadHistoryData();
+                }
+            }
+        }
+    }
+
+    // --- NEW METHOD: Preselects the department and opens the queue screen ---
+    public void routeToQueueWithDepartment(String department) {
+        if (patientQueueCard != null) {
+            patientQueueCard.preselectDepartment(department);
+        }
+        showScreen("QUEUE_STATUS_PAGE");
     }
 
     public void setLoggedInUser(org.hospitalqueing.model.User user) {
         this.loggedInUser = user;
+    }
+
+    public org.hospitalqueing.model.User getLoggedInUser() {
+        return this.loggedInUser;
     }
 
     public void triggerLogout() {

@@ -118,6 +118,12 @@ public class RegisterPanel extends JPanel {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         
         add(scrollPane, BorderLayout.CENTER);
+
+        // Force scrollbar to stay locked firmly at the absolute top on load
+        SwingUtilities.invokeLater(() -> {
+            scrollPane.getVerticalScrollBar().setValue(0);
+            scrollPane.getViewport().setViewPosition(new Point(0, 0));
+        });
     }
 
     // --- Getters for MainFrame routing & database mapping ---

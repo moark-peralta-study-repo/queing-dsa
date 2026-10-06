@@ -24,7 +24,7 @@ public class PatientDashboardPanel extends JPanel {
         setBackground(WHITE);
 
         // --- 1. LOGGED-IN NAVBAR ---
-        JPanel loggedInNav = new JPanel(new MigLayout("insets 15 20 15 20, aligny center", "[left]push[center]10[center]10[right]", "[center]"));
+        JPanel loggedInNav = new JPanel(new MigLayout("insets 15 20 15 20, aligny center", "[left]push[center]10[center]10[center]10[right]", "[center]"));
         loggedInNav.setBackground(WHITE);
 
         JPanel brandPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -41,12 +41,14 @@ public class PatientDashboardPanel extends JPanel {
         JLabel homeNav = createNavLink("Home");
         JLabel aboutNav = createNavLink("About");
         JLabel servicesNav = createNavLink("Services");
+        JLabel historyNav = createNavLink("History");
 
         JPanel linksPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         linksPanel.setOpaque(false);
         linksPanel.add(homeNav);
         linksPanel.add(aboutNav);
         linksPanel.add(servicesNav);
+        linksPanel.add(historyNav);
 
         JButton notifIconBtn = createIconButton("🔔");
         JButton profileIconBtn = createIconButton("👤");
@@ -63,7 +65,7 @@ public class PatientDashboardPanel extends JPanel {
 
         loggedInNav.add(brandPanel, "cell 0 0");
         loggedInNav.add(linksPanel, "cell 1 0");
-        loggedInNav.add(rightControls, "cell 3 0");
+        loggedInNav.add(rightControls, "cell 4 0");
 
         JPanel topContainer = new JPanel(new BorderLayout());
         topContainer.add(loggedInNav, BorderLayout.CENTER);
@@ -76,13 +78,10 @@ public class PatientDashboardPanel extends JPanel {
         // --- 2. SCROLLABLE CONTENT AREA ---
         scrollContentPanel = new JPanel(new MigLayout("wrap, fillx, insets 15 20 20 20", "[grow, fill]", "")) {
             @Override
-            public void scrollRectToVisible(Rectangle aRect) {
-                // Prevent automatic focus jumping from pulling down the scrollbar
-            }
+            public void scrollRectToVisible(Rectangle aRect) { }
         };
         scrollContentPanel.setBackground(WHITE);
 
-        // --- A. Appointment & Queue Buttons ---
         JPanel actionButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         actionButtonPanel.setOpaque(false);
 
@@ -96,7 +95,6 @@ public class PatientDashboardPanel extends JPanel {
         actionButtonPanel.add(queueBtn);
         scrollContentPanel.add(actionButtonPanel, "align center, gapbottom 15");
 
-        // --- B. Welcome Banner ---
         JPanel bannerPanel = new JPanel(new GridBagLayout());
         bannerPanel.setPreferredSize(new Dimension(740, 135)); 
         bannerPanel.setBackground(LIGHT_BLUE);
@@ -109,19 +107,17 @@ public class PatientDashboardPanel extends JPanel {
         
         scrollContentPanel.add(bannerPanel, "growx, gapbottom 15");
 
-        // --- C. Select Hospital Service or Department Title ---
         JLabel sectionTitle = new JLabel("Select Hospital Service or Department");
         sectionTitle.setFont(new Font("SansSerif", Font.BOLD, 17));
         sectionTitle.setForeground(TEXT_DARK);
         scrollContentPanel.add(sectionTitle, "gapbottom 10");
 
-        // --- D. Department Cards Grid ---
         JPanel deptGrid = new JPanel(new MigLayout("wrap 2, fill, gap 12 12", 
             "[0:0, grow, fill][0:0, grow, fill]", ""));
         deptGrid.setOpaque(false);
 
         deptGrid.add(createDepartmentCard("🚑", "Emergency Care", "24/7 Trauma & Urgent Medical Services", parentFrame));
-        deptGrid.add(createDepartmentCard("♥", "Cardiology", "Heart Specialists, ECG & Diagnostics", parentFrame)); // Clean, uniform symbol
+        deptGrid.add(createDepartmentCard("♥", "Cardiology", "Heart Specialists, ECG & Diagnostics", parentFrame)); 
         deptGrid.add(createDepartmentCard("👶", "Pediatrics", "Child Care, Immunization & Wellness", parentFrame));
         deptGrid.add(createDepartmentCard("💉", "General Surgery", "Outpatient & Specialized Procedures", parentFrame));
         deptGrid.add(createDepartmentCard("🔬", "Radiology", "X-Ray, CT Scan, MRI & Ultrasound Lab", parentFrame));
@@ -129,42 +125,50 @@ public class PatientDashboardPanel extends JPanel {
 
         scrollContentPanel.add(deptGrid, "growx");
 
-        // Scroll Pane Setup
         scrollPane = new JScrollPane(scrollContentPanel);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        
         add(scrollPane, BorderLayout.CENTER);
 
-        // Force scrollbar to stay locked firmly at the absolute top on load
         SwingUtilities.invokeLater(() -> {
             scrollPane.getVerticalScrollBar().setValue(0);
             scrollPane.getViewport().setViewPosition(new Point(0, 0));
         });
 
         // --- 3. WIRING ACTIONS ---
+        notifIconBtn.addActionListener(e -> {
+            JPopupMenu notifMenu = new JPopupMenu();
+            notifMenu.setBackground(WHITE);
+            JMenuItem headerItem = new JMenuItem("Notifications");
+            headerItem.setFont(new Font("SansSerif", Font.BOLD, 12));
+            headerItem.setEnabled(false); 
+            JMenuItem notif1 = new JMenuItem("Your queue A-024 is now being called.");
+            notif1.setBackground(new Color(235, 249, 241)); 
+            JMenuItem notif2 = new JMenuItem("Your appointment is scheduled for tomorrow.");
+            notifMenu.add(headerItem);
+            notifMenu.addSeparator();
+            notifMenu.add(notif1);
+            notifMenu.add(notif2);
+            notifMenu.show(notifIconBtn, 0, notifIconBtn.getHeight());
+        });
+
+        historyNav.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(MouseEvent e) { parentFrame.showScreen("HISTORY_PAGE"); }
+        });
+
+        profileIconBtn.addActionListener(e -> {
+            parentFrame.showScreen("PROFILE_PAGE");
+        });
+
         logoutBtn.addActionListener(e -> {
             int choice = JOptionPane.showConfirmDialog(
-                this, 
-                "Are you sure you want to log out?", 
-                "Logout Confirmation", 
-                JOptionPane.YES_NO_OPTION, 
-                JOptionPane.QUESTION_MESSAGE
-            );
-            
-            if (choice == JOptionPane.YES_OPTION) {
-                parentFrame.triggerLogout();
-            }
+                this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
+            if (choice == JOptionPane.YES_OPTION) { parentFrame.triggerLogout(); }
         });
 
-        appointmentBtn.addActionListener(e -> {
-            parentFrame.showScreen("APPOINTMENT_PAGE");
-        });
-
-        queueBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "Opening Queue Status Module...");
-        });
+        appointmentBtn.addActionListener(e -> { parentFrame.showScreen("APPOINTMENT_PAGE"); });
+        queueBtn.addActionListener(e -> { parentFrame.showScreen("QUEUE_STATUS_PAGE"); });
     }
 
     private JPanel createDepartmentCard(String iconSymbol, String title, String description, MainFrame parentFrame) {
@@ -189,15 +193,10 @@ public class PatientDashboardPanel extends JPanel {
         card.add(descLbl);
 
         card.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                card.setBackground(LIGHT_BLUE);
-            }
-            public void mouseExited(MouseEvent e) {
-                card.setBackground(new Color(248, 250, 252));
-            }
-            public void mouseClicked(MouseEvent e) {
-                parentFrame.showScreen("APPOINTMENT_PAGE");
-            }
+            public void mouseEntered(MouseEvent e) { card.setBackground(LIGHT_BLUE); }
+            public void mouseExited(MouseEvent e) { card.setBackground(new Color(248, 250, 252)); }
+            // THE FIX: This now passes the card's title to the MainFrame to preselect the combo box!
+            public void mouseClicked(MouseEvent e) { parentFrame.routeToQueueWithDepartment(title); } 
         });
 
         return card;
@@ -208,7 +207,6 @@ public class PatientDashboardPanel extends JPanel {
         label.setFont(new Font("SansSerif", Font.BOLD, 14));
         label.setForeground(TEXT_DARK);
         label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
         label.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(MouseEvent e) { label.setForeground(PRIMARY_BLUE); }
             public void mouseExited(MouseEvent e) { label.setForeground(TEXT_DARK); }

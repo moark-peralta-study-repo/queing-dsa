@@ -118,6 +118,21 @@ public class LoginPanel extends JPanel {
                 return;
             }
 
+            // --- HARDCODED STAFF BYPASS FOR UI TESTING ---
+            if (username.equals("staff") && password.equals("admin")) {
+                org.hospitalqueing.model.User dummyStaff = new org.hospitalqueing.model.User();
+                dummyStaff.setUserId(999); // Dummy ID
+                dummyStaff.setUsername("Dr. Tester");
+                dummyStaff.setRoleId(1); // 1 = Admin/Staff in your system
+
+                parentFrame.setLoggedInUser(dummyStaff);
+                clearFields();
+                JOptionPane.showMessageDialog(this, "Test Login Successful! Welcome to the Staff Portal.");
+                parentFrame.showScreen("ADMIN_DASHBOARD");
+                return; // Stop here so it doesn't try to query the database
+            }
+            // ---------------------------------------------
+
             try {
                 UserDAO userDAO = new UserDAO();
                 AuthenticationService authService = new AuthenticationService(userDAO);
