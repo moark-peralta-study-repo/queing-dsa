@@ -154,6 +154,37 @@ public class PatientDAO {
     }
   }
 
+  /**
+   * Returns the patient profile linked to a {@code user_id}, or {@code null} if the user has no
+   * patient row. Used by the UI to translate a logged-in user (who is addressed by user id) into
+   * the patient (who is addressed by patient id) before writing appointments or queue entries.
+   */
+  public Patient findByUserId(int userId) {
+    String sql =
+        """
+          SELECT *
+          FROM patients
+          WHERE user_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, userId);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+        if (resultSet.next()) {
+          return mapPatient(resultSet);
+        }
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return null;
+  }
+
   private Patient mapPatient(ResultSet resultSet) throws SQLException {
 
     Patient patient = new Patient();

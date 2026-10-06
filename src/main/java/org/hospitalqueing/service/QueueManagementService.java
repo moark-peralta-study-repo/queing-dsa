@@ -17,6 +17,7 @@ import org.hospitalqueing.model.Counter;
 import org.hospitalqueing.model.Department;
 import org.hospitalqueing.model.QueueEntry;
 import org.hospitalqueing.model.QueueEvent;
+import org.hospitalqueing.model.QueueStatus;
 import org.hospitalqueing.model.Service;
 import org.hospitalqueing.model.TicketStatus;
 
@@ -54,7 +55,7 @@ public class QueueManagementService {
       entry.setPriorityType("REGULAR");
     }
     if (entry.getStatus() == null || entry.getStatus().isEmpty()) {
-      entry.setStatus("WAITING");
+      entry.setStatus(QueueStatus.WAITING);
     }
     entry.setJoinedAt(LocalDate.now() + " " + LocalTime.now().withNano(0));
 
@@ -86,21 +87,21 @@ public class QueueManagementService {
     }
 
     switch (entry.getStatus()) {
-      case "WAITING" -> {
-        entry.setStatus("CALLED");
+      case QueueStatus.WAITING -> {
+        entry.setStatus(QueueStatus.CHECKED_IN);
         entry.setCalledAt(timestamp());
         logEvent(queueId, null, "CALLED", "Called to counter");
       }
-      case "CALLED" -> {
+      case QueueStatus.CHECKED_IN -> {
         if (hook != null) {
           hook.accept(entry);
         }
-        entry.setStatus("IN_SERVICE");
+        entry.setStatus(QueueStatus.IN_CONSULTATION);
         entry.setServiceStartedAt(timestamp());
         logEvent(queueId, null, "SERVING", "Service started");
       }
-      case "IN_SERVICE" -> {
-        entry.setStatus("COMPLETED");
+      case QueueStatus.IN_CONSULTATION -> {
+        entry.setStatus(QueueStatus.COMPLETED);
         entry.setCompletedAt(timestamp());
         logEvent(queueId, null, "COMPLETED", "Queue entry completed");
       }
@@ -113,13 +114,20 @@ public class QueueManagementService {
     return true;
   }
 
+  /** Returns the raw queue entry for a queue id (for panels that need to display the live state). */
+  public QueueEntry getEntry(int queueId) {
+    return queueEntryDAO.findById(queueId);
+  }
+
   public boolean skip(int queueId) {
     QueueEntry entry = queueEntryDAO.findById(queueId);
-    if (entry == null || entry.getStatus().equals("COMPLETED")) {
+    if (entry == null || QueueStatus.isTerminal(entry.getStatus())) {
       return false;
     }
 
-    entry.setStatus("SKIPPED");
+    // The current vocabulary has no dedicated "skipped" state; a skipped ticket leaves the
+    // active queue the same way a no-show does.
+    entry.setStatus(QueueStatus.NO_SHOW);
     entry.setCompletedAt(timestamp());
     queueEntryDAO.update(entry);
     logEvent(queueId, null, "SKIPPED", "Entry skipped");
@@ -133,7 +141,7 @@ public class QueueManagementService {
       return false;
     }
 
-    entry.setStatus("NO_SHOW");
+    entry.setStatus(QueueStatus.NO_SHOW);
     entry.setCompletedAt(timestamp());
     queueEntryDAO.update(entry);
     logEvent(queueId, null, "NO_SHOW", "Patient did not show");
@@ -143,15 +151,38 @@ public class QueueManagementService {
   public List<QueueEntry> getActiveQueue(int departmentId) {
     return queueEntryDAO.findAll().stream()
         .filter(e -> e.getDepartmentId() == departmentId)
-        .filter(
-            e ->
-                e.getStatus().equals("WAITING")
-                    || e.getStatus().equals("CALLED")
-                    || e.getStatus().equals("IN_SERVICE"))
+        .filter(e -> QueueStatus.isActive(e.getStatus()))
         .sorted(
             Comparator.comparingInt((QueueEntry e) -> priorityRank(e.getPriorityType()))
                 .thenComparing(QueueEntry::getJoinedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
         .toList();
+  }
+
+  /**
+   * Sets a queue entry to an arbitrary status from the current vocabulary (the values shown in
+   * the staff "Patient Controls" combo: Checked In, In Consultation, For Laboratory, For Pharmacy,
+   * Discharged, Completed, ...). Stamps terminal states with a completion time. Returns false if
+   * the entry does not exist or the status is not a legal queue status.
+   */
+  public boolean setStatus(int queueId, String status) {
+    if (!QueueStatus.isAllowed(status)) {
+      return false;
+    }
+    QueueEntry entry = queueEntryDAO.findById(queueId);
+    if (entry == null) {
+      return false;
+    }
+    String previous = entry.getStatus();
+    if (previous == null || previous.equals(status)) {
+      return false;
+    }
+    entry.setStatus(status);
+    if (QueueStatus.isTerminal(status)) {
+      entry.setCompletedAt(entry.getCompletedAt() == null ? timestamp() : entry.getCompletedAt());
+    }
+    queueEntryDAO.update(entry);
+    logEvent(queueId, null, "STATUS_CHANGE", previous + " -> " + status);
+    return true;
   }
 
   public static int priorityRank(String priorityType) {
@@ -177,7 +208,7 @@ public class QueueManagementService {
     List<QueueEntry> active = getActiveQueue(entry.getDepartmentId());
 
     int ahead = 0;
-    boolean waiting = "WAITING".equals(entry.getStatus());
+    boolean waiting = QueueStatus.WAITING.equals(entry.getStatus());
     if (waiting) {
       for (QueueEntry e : active) {
         if (e.getQueueId() == entry.getQueueId()) {
@@ -189,7 +220,7 @@ public class QueueManagementService {
 
     Integer currentNumber = null;
     for (QueueEntry e : active) {
-      if ("IN_SERVICE".equals(e.getStatus()) || "CALLED".equals(e.getStatus())) {
+      if (QueueStatus.isAtCounter(e.getStatus())) {
         currentNumber = e.getQueueNumber();
         break;
       }

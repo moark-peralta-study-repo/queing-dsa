@@ -132,13 +132,25 @@ public class ProfilePanel extends JPanel {
     public void loadUserData() {
         if (parentFrame.getLoggedInUser() != null) {
             usernameField.setText(parentFrame.getLoggedInUser().getUsername());
-            
-            // TODO for Backend Phase: Fetch the Patient object using getLoggedInUser().getUserId()
-            // patient = patientDAO.getPatientByUserId(parentFrame.getLoggedInUser().getUserId());
-            // firstNameField.setText(patient.getFirstName());
-            // lastNameField.setText(patient.getLastName());
-            // etc...
-            
+
+            // Load the patient profile for the logged-in user.
+            org.hospitalqueing.model.Patient patient =
+                    org.hospitalqueing.ui.UiData.patientProfileForUser(parentFrame.getLoggedInUser());
+            if (patient != null) {
+                firstNameField.setText(patient.getFirstName() == null ? "" : patient.getFirstName());
+                lastNameField.setText(patient.getLastName() == null ? "" : patient.getLastName());
+                phoneField.setText(patient.getPhone() == null ? "" : patient.getPhone());
+                birthDateField.setText(patient.getBirthDate() == null ? "" : patient.getBirthDate());
+                if (patient.getSex() != null && UiData.indexOfItem(sexComboBox, patient.getSex()) >= 0) {
+                    sexComboBox.setSelectedItem(patient.getSex());
+                }
+            } else {
+                firstNameField.setText("");
+                lastNameField.setText("");
+                phoneField.setText("");
+                birthDateField.setText("");
+            }
+
             newPasswordField.setText(""); // Always clear password field on load
         }
     }

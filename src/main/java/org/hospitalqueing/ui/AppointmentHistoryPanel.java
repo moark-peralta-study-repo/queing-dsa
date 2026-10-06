@@ -5,6 +5,11 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.util.List;
+
+import org.hospitalqueing.dao.AppointmentDAO;
+import org.hospitalqueing.model.Appointment;
+import org.hospitalqueing.model.User;
 
 public class AppointmentHistoryPanel extends JPanel {
 
@@ -101,16 +106,32 @@ public class AppointmentHistoryPanel extends JPanel {
     public void loadHistoryData() {
         tableModel.setRowCount(0); // Clear existing rows
 
-        if (parentFrame.getLoggedInUser() != null) {
-            // TODO for Backend Phase: 
-            // 1. Fetch Patient ID via LoggedInUser
-            // 2. List<Appointment> appointments = appointmentDAO.getAppointmentsByPatientId(patientId);
-            // 3. Loop through the list and add rows dynamically.
+        if (parentFrame.getLoggedInUser() == null) {
+            return;
+        }
 
-            // --- DUMMY DATA FOR VISUAL TESTING ---
-            tableModel.addRow(new Object[]{"2023-10-25", "Cardiology", "Dr. Maria Santos", "Appointment", "Completed"});
-            tableModel.addRow(new Object[]{"2023-10-26", "Internal Med", "Dr. Carlo Reyes", "Walk-in", "Completed"});
-            tableModel.addRow(new Object[]{"2023-11-05", "Pediatrics", "Dr. Ana Lim", "Appointment", "Scheduled"});
+        User user = parentFrame.getLoggedInUser();
+        int patientId = UiData.patientIdForUser(user);
+        if (patientId < 0) {
+            // No patient profile linked to this account; nothing to show.
+            return;
+        }
+
+        try {
+            AppointmentDAO dao = new AppointmentDAO();
+            List<Appointment> appointments = dao.findByPatient(patientId);
+
+            for (Appointment appt : appointments) {
+                String date = appt.getAppointmentDate() != null ? appt.getAppointmentDate().toString() : "--";
+                String deptName = UiData.departmentNameForService(appt.getServiceId());
+                String doctorName = appt.getDoctorId() != null ? UiData.doctorName(appt.getDoctorId()) : "--";
+                String type = "Appointment";
+                String status = appt.getStatus() == null ? "--" : appt.getStatus();
+
+                tableModel.addRow(new Object[]{date, deptName, doctorName, type, status});
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 }

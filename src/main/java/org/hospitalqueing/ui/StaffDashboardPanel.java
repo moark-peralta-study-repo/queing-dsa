@@ -18,6 +18,7 @@ public class StaffDashboardPanel extends JPanel {
 
     private CardLayout staffCardLayout;
     private JPanel staffContentPanel;
+    private StaffPatientQueuePanel staffPatientPanel;
     private MainFrame parentFrame;
 
     public StaffDashboardPanel(MainFrame parentFrame) {
@@ -78,11 +79,23 @@ public class StaffDashboardPanel extends JPanel {
         // Create the individual staff screens
         JPanel homeScreen = buildHomeScreen();
         JPanel walkInScreen = new StaffWalkInPanel();
-        JPanel patientScreen = new StaffPatientQueuePanel();
+        staffPatientPanel = new StaffPatientQueuePanel();
+        JPanel patientScreen = staffPatientPanel;
 
         staffContentPanel.add(homeScreen, "STAFF_HOME");
         staffContentPanel.add(walkInScreen, "STAFF_WALKIN");
         staffContentPanel.add(patientScreen, "STAFF_PATIENT");
+
+        // Re-query the live queue whenever the patient screen becomes visible, so the operator
+        // always sees current data no matter how they navigated here (nav link, quick-action card,
+        // or a future route). componentShown() fires when this panel transitions to showing,
+        // which is exactly when a CardLayout page is selected.
+        patientScreen.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                staffPatientPanel.refresh();
+            }
+        });
 
         add(staffContentPanel, BorderLayout.CENTER);
 
@@ -94,7 +107,7 @@ public class StaffDashboardPanel extends JPanel {
             public void mouseClicked(MouseEvent e) { staffCardLayout.show(staffContentPanel, "STAFF_WALKIN"); }
         });
         patientNav.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { staffCardLayout.show(staffContentPanel, "STAFF_PATIENT"); }
+            public void mouseClicked(MouseEvent e) { showStaffPatient(); }
         });
 
         logoutBtn.addActionListener(e -> {
@@ -105,23 +118,39 @@ public class StaffDashboardPanel extends JPanel {
         });
     }
 
+    /** Shows the live patient queue screen and refreshes it. */
+    private void showStaffPatient() {
+        staffCardLayout.show(staffContentPanel, "STAFF_PATIENT");
+        if (staffPatientPanel != null) {
+            staffPatientPanel.refresh();
+        }
+    }
+
     // --- HOME SCREEN BUILDER ---
     private JPanel buildHomeScreen() {
         JPanel panel = new JPanel(new MigLayout("wrap 1, insets 30 40 30 40, fillx", "[grow, fill]", "[]30[]30[]"));
         panel.setBackground(BACKGROUND_LIGHT);
 
-        // A. Greeting Section
+        // A. Greeting Section — reflects the actually logged-in staff account.
+        org.hospitalqueing.model.User staffUser =
+                parentFrame != null ? parentFrame.getLoggedInUser() : null;
+        String staffName = (staffUser != null && staffUser.getUsername() != null)
+                ? staffUser.getUsername() : "Staff";
+        String staffRole = UiData.roleNameForUser(staffUser);
+        String roleDisplay = (staffRole != null && !staffRole.isBlank())
+                ? staffRole + " • On duty" : "Staff • On duty";
+
         JPanel greetingPanel = new JPanel(new MigLayout("insets 0", "[left]", "[]2[]"));
         greetingPanel.setOpaque(false);
-        JLabel greetingText = new JLabel("Good Morning,");
+        JLabel greetingText = new JLabel("Good day,");
         greetingText.setFont(new Font("SansSerif", Font.PLAIN, 16));
         greetingText.setForeground(TEXT_MUTED);
-        
-        JLabel docName = new JLabel("Dr. Maria Santos"); 
+
+        JLabel docName = new JLabel(staffName);
         docName.setFont(new Font("SansSerif", Font.BOLD, 24));
         docName.setForeground(TEXT_DARK);
 
-        JLabel docRole = new JLabel("Internal Medicine • Physician");
+        JLabel docRole = new JLabel(roleDisplay);
         docRole.setFont(new Font("SansSerif", Font.PLAIN, 14));
         docRole.setForeground(TEXT_MUTED);
 

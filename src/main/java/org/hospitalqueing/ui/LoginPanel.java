@@ -123,8 +123,8 @@ public class LoginPanel extends JPanel {
                 org.hospitalqueing.model.User dummyStaff = new org.hospitalqueing.model.User();
                 dummyStaff.setUserId(999); // Dummy ID
                 dummyStaff.setUsername("Dr. Tester");
-                dummyStaff.setRoleId(1); // 1 = Admin/Staff in your system
-
+                int staffRoleId = org.hospitalqueing.ui.UiData.roleIdByName("STAFF");
+                dummyStaff.setRoleId(staffRoleId > 0 ? staffRoleId : 2); // 2 = STAFF in the seed
                 parentFrame.setLoggedInUser(dummyStaff);
                 clearFields();
                 JOptionPane.showMessageDialog(this, "Test Login Successful! Welcome to the Staff Portal.");
@@ -140,10 +140,11 @@ public class LoginPanel extends JPanel {
 
                 if (loggedInUser != null) {
                     parentFrame.setLoggedInUser(loggedInUser);
-                    clearFields(); 
+                    clearFields();
                     JOptionPane.showMessageDialog(this, "Login Successful! Welcome back, " + loggedInUser.getUsername());
-                    
-                    if (loggedInUser.getRoleId() == 1) {
+
+                    // Route by role name, not by hardcoded id (PATIENT/STAFF/ADMIN are seeded).
+                    if (org.hospitalqueing.ui.UiData.isStaff(loggedInUser)) {
                         parentFrame.showScreen("ADMIN_DASHBOARD");
                     } else {
                         parentFrame.showScreen("DASHBOARD_PAGE");

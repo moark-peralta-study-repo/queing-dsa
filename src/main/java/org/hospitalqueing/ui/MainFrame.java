@@ -161,7 +161,9 @@ public class MainFrame extends JFrame {
                 org.hospitalqueing.model.User newUser = new org.hospitalqueing.model.User();
                 newUser.setUsername(username);
                 newUser.setPasswordHash(authService.hashPassword(registerCard.getPassword()));
-                newUser.setRoleId(3); 
+                // New accounts are patients. Use the seeded role id (PATIENT) when present.
+                int patientRoleId = org.hospitalqueing.ui.UiData.roleIdByName("PATIENT");
+                newUser.setRoleId(patientRoleId > 0 ? patientRoleId : 3);
                 newUser.setActive(true);
                 userController.createUser(newUser);
 

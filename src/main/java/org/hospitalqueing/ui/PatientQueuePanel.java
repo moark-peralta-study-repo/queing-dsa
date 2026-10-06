@@ -3,6 +3,19 @@ package org.hospitalqueing.ui;
 import net.miginfocom.swing.MigLayout;
 import javax.swing.*;
 import java.awt.*;
+import java.time.LocalDate;
+import java.util.List;
+
+import org.hospitalqueing.dao.CounterDAO;
+import org.hospitalqueing.dao.DepartmentDAO;
+import org.hospitalqueing.dao.QueueEntryDAO;
+import org.hospitalqueing.dao.QueueEventDAO;
+import org.hospitalqueing.dao.ServiceDAO;
+import org.hospitalqueing.model.Counter;
+import org.hospitalqueing.model.QueueEntry;
+import org.hospitalqueing.model.QueueStatus;
+import org.hospitalqueing.model.User;
+import org.hospitalqueing.service.QueueManagementService;
 
 public class PatientQueuePanel extends JPanel {
 
@@ -10,12 +23,14 @@ public class PatientQueuePanel extends JPanel {
     private final Color TEXT_DARK = new Color(45, 55, 72);
     private final Color WHITE = Color.WHITE;
 
+    private MainFrame parentFrame;
     private JLabel backBtn;
     private JComboBox<String> departmentCombo;
     private JTextArea notesArea;
     private JButton joinQueueBtn;
 
     public PatientQueuePanel(MainFrame parentFrame) {
+        this.parentFrame = parentFrame;
         setLayout(new BorderLayout());
         setBackground(WHITE);
 
@@ -31,7 +46,7 @@ public class PatientQueuePanel extends JPanel {
         JLabel logoLabel = new JLabel("✚");
         logoLabel.setForeground(PRIMARY_BLUE);
         logoLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
-        
+
         JLabel titleLabel = new JLabel("HOSPITAL - JOIN LIVE QUEUE");
         titleLabel.setForeground(PRIMARY_BLUE);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -56,14 +71,14 @@ public class PatientQueuePanel extends JPanel {
         JLabel formTitle = new JLabel("Get a Queue Number");
         formTitle.setFont(new Font("SansSerif", Font.BOLD, 22));
         formTitle.setForeground(TEXT_DARK);
-        
+
         JLabel formSubtitle = new JLabel("Join the walk-in line for today.");
         formSubtitle.setFont(new Font("SansSerif", Font.PLAIN, 14));
         formSubtitle.setForeground(new Color(113, 128, 150));
 
-        departmentCombo = new JComboBox<>(new String[]{"Select Department...", "Emergency Care", "Cardiology", "Pediatrics", "General Surgery", "Radiology", "Pharmacy"});
+        departmentCombo = new JComboBox<>(buildDepartmentOptions());
         departmentCombo.setBackground(WHITE);
-        
+
         notesArea = new JTextArea(4, 20);
         notesArea.setLineWrap(true);
         notesArea.setWrapStyleWord(true);
@@ -87,7 +102,7 @@ public class PatientQueuePanel extends JPanel {
         card.add(joinQueueBtn, "span 2, center, width 260!, height 42!");
 
         centerWrapper.add(card);
-        
+
         JScrollPane mainScroll = new JScrollPane(centerWrapper);
         mainScroll.setBorder(null);
         mainScroll.getVerticalScrollBar().setUnitIncrement(16);
@@ -100,37 +115,92 @@ public class PatientQueuePanel extends JPanel {
             }
         });
 
-        joinQueueBtn.addActionListener(e -> {
-            String department = (String) departmentCombo.getSelectedItem();
-            String notes = notesArea.getText().trim();
-
-            if (departmentCombo.getSelectedIndex() == 0) {
-                JOptionPane.showMessageDialog(this, "Please select a department.", "Validation Error", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
-            try {
-                String deptInitial = department.substring(0, 1).toUpperCase();
-                String generatedQueueNo = deptInitial + "-" + (int)(Math.random() * 100 + 100);
-
-                JOptionPane.showMessageDialog(this, 
-                    "You have successfully joined the queue!\n\n" +
-                    "Department: " + department + "\n" +
-                    "Your Queue Number: " + generatedQueueNo + "\n\n" +
-                    "Please wait for your number to be called.", 
-                    "Ticket Generated", JOptionPane.INFORMATION_MESSAGE);
-                
-                departmentCombo.setSelectedIndex(0);
-                notesArea.setText("");
-                parentFrame.showScreen("DASHBOARD_PAGE");
-
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Error joining queue: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
+        joinQueueBtn.addActionListener(e -> joinQueue());
     }
 
-    // --- NEW METHOD: Preloads the dropdown menu from the dashboard click ---
+    private String[] buildDepartmentOptions() {
+        String[] names = UiData.departmentNames();
+        if (names.length == 0) {
+            return new String[]{"Select Department...", "Cardiology", "General Medicine", "Pediatrics", "Orthopedics"};
+        }
+        String[] withPlaceholder = new String[names.length + 1];
+        withPlaceholder[0] = "Select Department...";
+        System.arraycopy(names, 0, withPlaceholder, 1, names.length);
+        return withPlaceholder;
+    }
+
+    private void joinQueue() {
+        String department = (String) departmentCombo.getSelectedItem();
+        String notes = notesArea.getText().trim();
+
+        if (department == null || department.equals("Select Department...")) {
+            JOptionPane.showMessageDialog(this, "Please select a department.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            User loggedIn = parentFrame.getLoggedInUser();
+            int patientId = UiData.patientIdForUser(loggedIn);
+            if (patientId < 0) {
+                throw new Exception("No patient profile found for your account. Please register again from the home page.");
+            }
+            int departmentId = UiData.departmentIdByName(department);
+            if (departmentId < 0) {
+                throw new Exception("Department \"" + department + "\" not found. Please pick another.");
+            }
+            int serviceId = UiData.serviceIdForDepartmentId(departmentId);
+            if (serviceId < 0) {
+                throw new Exception("Department \"" + department + "\" has no active service. Please pick another.");
+            }
+
+            CounterDAO counterDAO = new CounterDAO();
+            Integer counterId = null;
+            List<Counter> counters = counterDAO.findByDepartment(departmentId);
+            if (counters != null) {
+                for (Counter c : counters) {
+                    if (c.isActive()) {
+                        counterId = c.getCounterId();
+                        break;
+                    }
+                }
+            }
+
+            QueueEntryDAO queueEntryDAO = new QueueEntryDAO();
+            QueueManagementService qms = new QueueManagementService(
+                    queueEntryDAO, new QueueEventDAO(), new ServiceDAO(), new DepartmentDAO(), counterDAO);
+
+            QueueEntry entry = new QueueEntry();
+            entry.setPatientId(patientId);
+            entry.setDepartmentId(departmentId);
+            entry.setServiceId(serviceId);
+            entry.setCounterId(counterId);
+            entry.setQueueDate(LocalDate.now().toString());
+            entry.setPriorityType("REGULAR");
+            entry.setStatus(QueueStatus.WAITING);
+            entry.setDoctorId(null);
+            entry.setAppointmentId(null);
+
+            QueueEntry saved = qms.joinQueue(entry);
+
+            JOptionPane.showMessageDialog(this,
+                    "You have successfully joined the queue!\n\n" +
+                    "Department: " + department + "\n" +
+                    "Your Queue Number: #" + saved.getQueueNumber() + "\n" +
+                    "Ticket Token: " + saved.getQrToken() + "\n\n" +
+                    "Please wait for your number to be called.",
+                    "Ticket Generated", JOptionPane.INFORMATION_MESSAGE);
+
+            departmentCombo.setSelectedIndex(0);
+            notesArea.setText("");
+            parentFrame.showScreen("DASHBOARD_PAGE");
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error joining queue: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // --- Preloads the dropdown menu from the dashboard click ---
     public void preselectDepartment(String departmentName) {
         if (departmentCombo != null) {
             departmentCombo.setSelectedItem(departmentName);

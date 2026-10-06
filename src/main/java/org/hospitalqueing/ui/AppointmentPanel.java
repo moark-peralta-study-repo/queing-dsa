@@ -5,6 +5,7 @@ import org.hospitalqueing.controller.AppointmentController;
 import org.hospitalqueing.service.AppointmentService;
 import org.hospitalqueing.dao.AppointmentDAO;
 import org.hospitalqueing.model.Appointment;
+import org.hospitalqueing.model.User;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,13 +20,15 @@ public class AppointmentPanel extends JPanel {
 
     private JLabel backBtn;
     private JComboBox<String> departmentCombo;
-    private JComboBox<String> doctorCombo; 
+    private JComboBox<String> doctorCombo;
     private JTextField dateField;
     private JComboBox<String> timeSlotCombo;
     private JTextArea notesArea;
     private JButton submitAppointmentBtn;
+    private MainFrame parentFrame;
 
     public AppointmentPanel(MainFrame parentFrame) {
+        this.parentFrame = parentFrame;
         setLayout(new BorderLayout());
         setBackground(WHITE);
 
@@ -41,7 +44,7 @@ public class AppointmentPanel extends JPanel {
         JLabel logoLabel = new JLabel("✚");
         logoLabel.setForeground(PRIMARY_BLUE);
         logoLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
-        
+
         JLabel titleLabel = new JLabel("HOSPITAL - APPOINTMENT BOOKING");
         titleLabel.setForeground(PRIMARY_BLUE);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -59,7 +62,7 @@ public class AppointmentPanel extends JPanel {
         JPanel centerWrapper = new JPanel(new GridBagLayout());
         centerWrapper.setBackground(new Color(240, 244, 248));
 
-        JPanel card = new JPanel(new MigLayout("wrap 2, insets 30 40 30 40", "[right]15[left, grow, fill]", "[]15[]15[]15[]15[]25[]"));
+        JPanel card = new JPanel(new MigLayout("wrap 2, insets 30 40 30 40", "[right]15[left, grow, fill]", "[]15[]15[]15[]15[]15[]25[]"));
         card.setBackground(WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true));
 
@@ -67,23 +70,17 @@ public class AppointmentPanel extends JPanel {
         formTitle.setFont(new Font("SansSerif", Font.BOLD, 22));
         formTitle.setForeground(TEXT_DARK);
 
-        departmentCombo = new JComboBox<>(new String[]{"Emergency Care", "Cardiology", "Pediatrics", "General Surgery", "Radiology", "Pharmacy"});
-        
-        // Hardcoded Dummy Doctors for the UI Prototype
-        String[] dummyDoctors = {
-            "Select a Doctor...",
-            "Dr. Maria Santos - Cardiology",
-            "Dr. John Smith - Pediatrics",
-            "Dr. Emily Chen - General Surgery",
-            "Dr. Carlo Reyes - Internal Medicine"
-        };
-        doctorCombo = new JComboBox<>(dummyDoctors);
+        departmentCombo = new JComboBox<>(loadDepartments());
+        departmentCombo.setBackground(WHITE);
+
+        // Doctor combo is populated dynamically per selected department.
+        doctorCombo = new JComboBox<>(new String[]{"Select a Doctor..."});
         doctorCombo.setBackground(WHITE);
-        
+
         dateField = new JTextField();
         dateField.putClientProperty("JTextField.placeholderText", "YYYY-MM-DD");
         timeSlotCombo = new JComboBox<>(new String[]{"09:00 AM - 10:00 AM", "10:00 AM - 11:00 AM", "01:00 PM - 02:00 PM", "02:00 PM - 03:00 PM"});
-        
+
         notesArea = new JTextArea(3, 20);
         notesArea.setLineWrap(true);
         notesArea.setWrapStyleWord(true);
@@ -98,14 +95,14 @@ public class AppointmentPanel extends JPanel {
 
         card.add(formTitle, "span 2, center, gapbottom 10");
         card.add(new JLabel("Department:")); card.add(departmentCombo, "width 250!, height 35!");
-        card.add(new JLabel("Preferred Doctor:")); card.add(doctorCombo, "width 250!, height 35!"); 
+        card.add(new JLabel("Preferred Doctor:")); card.add(doctorCombo, "width 250!, height 35!");
         card.add(new JLabel("Date (YYYY-MM-DD):")); card.add(dateField, "width 250!, height 35!");
         card.add(new JLabel("Time Slot:")); card.add(timeSlotCombo, "width 250!, height 35!");
         card.add(new JLabel("Notes / Symptoms:")); card.add(notesScroll, "width 250!, height 70!");
         card.add(submitAppointmentBtn, "span 2, center, width 250!, height 40!");
 
         centerWrapper.add(card);
-        
+
         JScrollPane mainScroll = new JScrollPane(centerWrapper);
         mainScroll.setBorder(null);
         mainScroll.getVerticalScrollBar().setUnitIncrement(16);
@@ -114,6 +111,7 @@ public class AppointmentPanel extends JPanel {
         SwingUtilities.invokeLater(() -> {
             mainScroll.getVerticalScrollBar().setValue(0);
             mainScroll.getViewport().setViewPosition(new Point(0, 0));
+            refreshDoctors();
         });
 
         // --- 3. WIRING ACTIONS ---
@@ -123,86 +121,111 @@ public class AppointmentPanel extends JPanel {
             }
         });
 
-        submitAppointmentBtn.addActionListener(e -> {
-            String department = (String) departmentCombo.getSelectedItem();
-            String doctor = (String) doctorCombo.getSelectedItem();
-            String dateStr = dateField.getText().trim();
-            String timeSlot = (String) timeSlotCombo.getSelectedItem();
-            String notes = notesArea.getText().trim();
+        departmentCombo.addActionListener(e -> refreshDoctors());
 
-            // GUARDRAIL 1: Empty Field Check
-            if (doctorCombo.getSelectedIndex() == 0 || dateStr.isEmpty() || notes.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Please select a doctor and fill in all required fields.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+        submitAppointmentBtn.addActionListener(e -> submitAppointment());
+    }
+
+    private String[] loadDepartments() {
+        String[] names = UiData.departmentNames();
+        if (names.length == 0) {
+            // No departments seeded; fall back to a safe default set so the form is usable.
+            return new String[]{"Cardiology", "General Medicine", "Pediatrics", "Orthopedics"};
+        }
+        return names;
+    }
+
+    /** Re-populates the doctor combo for the currently selected department. */
+    private void refreshDoctors() {
+        if (departmentCombo == null || doctorCombo == null) return;
+        String deptName = (String) departmentCombo.getSelectedItem();
+        String[] labels = UiData.doctorLabelsForDepartment(deptName);
+        doctorCombo.removeAllItems();
+        doctorCombo.addItem("Select a Doctor...");
+        for (String l : labels) doctorCombo.addItem(l);
+        doctorCombo.setSelectedIndex(0);
+    }
+
+    private void submitAppointment() {
+        String department = (String) departmentCombo.getSelectedItem();
+        int doctorIndex = doctorCombo.getSelectedIndex();
+        int[] doctorIds = UiData.doctorIdsForDepartment(department);
+        int selectedDoctorId = doctorIndex > 0 && doctorIndex - 1 < doctorIds.length
+                ? doctorIds[doctorIndex - 1] : -1;
+        String dateStr = dateField.getText().trim();
+        String timeSlot = (String) timeSlotCombo.getSelectedItem();
+        String notes = notesArea.getText().trim();
+
+        // GUARDRAIL 1: Empty Field Check
+        if (department == null || dateStr.isEmpty() || notes.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please select a department and fill in all required fields.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // GUARDRAIL 2: Strict Date Format & Past-Date Prevention
+        LocalDate appointmentDate;
+        try {
+            appointmentDate = LocalDate.parse(dateStr);
+            if (appointmentDate.isBefore(LocalDate.now())) {
+                JOptionPane.showMessageDialog(this, "Appointments cannot be booked in the past.", "Validation Error", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+        } catch (DateTimeParseException ex) {
+            JOptionPane.showMessageDialog(this, "Invalid date format. Please use YYYY-MM-DD (e.g., 2026-10-15).", "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-            // GUARDRAIL 2: Strict Date Format & Past-Date Prevention
-            LocalDate appointmentDate;
-            try {
-                appointmentDate = LocalDate.parse(dateStr); 
-                if (appointmentDate.isBefore(LocalDate.now())) {
-                    JOptionPane.showMessageDialog(this, "Appointments cannot be booked in the past.", "Validation Error", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-            } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid date format. Please use YYYY-MM-DD (e.g., 2026-10-15).", "Validation Error", JOptionPane.ERROR_MESSAGE);
-                return;
+        // Translate the UI dropdown String into a LocalTime object for the Database.
+        LocalTime appointmentTime = LocalTime.of(9, 0);
+        if (timeSlot != null) {
+            if (timeSlot.contains("09:00 AM")) appointmentTime = LocalTime.of(9, 0);
+            else if (timeSlot.contains("10:00 AM")) appointmentTime = LocalTime.of(10, 0);
+            else if (timeSlot.contains("01:00 PM")) appointmentTime = LocalTime.of(13, 0);
+            else if (timeSlot.contains("02:00 PM")) appointmentTime = LocalTime.of(14, 0);
+        }
+
+        try {
+            // The appointments table requires a real patient_id (FK to patients), a real
+            // service_id (FK to services), and doctor_id is optional.
+            User loggedIn = parentFrame.getLoggedInUser();
+            int patientId = UiData.patientIdForUser(loggedIn);
+            if (patientId < 0) {
+                throw new Exception("No patient profile found for the logged-in user. Please re-register or contact support.");
+            }
+            int serviceId = UiData.serviceIdForDepartment(department);
+            if (serviceId < 0) {
+                throw new Exception("Department \"" + department + "\" has no active service in the system. Please pick another department.");
             }
 
-            // GUARDRAIL 3: Translate the UI dropdown String into a LocalTime object for the Database
-            LocalTime appointmentTime = LocalTime.of(9, 0); // Default to 9:00 AM
-            if (timeSlot.contains("09:00 AM")) {
-                appointmentTime = LocalTime.of(9, 0);
-            } else if (timeSlot.contains("10:00 AM")) {
-                appointmentTime = LocalTime.of(10, 0);
-            } else if (timeSlot.contains("01:00 PM")) {
-                appointmentTime = LocalTime.of(13, 0);
-            } else if (timeSlot.contains("02:00 PM")) {
-                appointmentTime = LocalTime.of(14, 0);
+            AppointmentDAO appointmentDAO = new AppointmentDAO();
+            AppointmentService appointmentService = new AppointmentService(appointmentDAO);
+            AppointmentController appointmentController = new AppointmentController(appointmentService);
+
+            Appointment appointment = new Appointment();
+            appointment.setPatientId(patientId);
+            appointment.setServiceId(serviceId);
+            if (selectedDoctorId > 0) {
+                appointment.setDoctorId(selectedDoctorId);
             }
+            appointment.setAppointmentDate(appointmentDate);
+            appointment.setAppointmentTime(appointmentTime);
+            appointment.setStatus("SCHEDULED");
 
-            try {
-                AppointmentDAO appointmentDAO = new AppointmentDAO();
-                AppointmentService appointmentService = new AppointmentService(appointmentDAO);
-                AppointmentController appointmentController = new AppointmentController(appointmentService);
+            appointmentController.createAppointment(appointment);
 
-                Appointment appointment = new Appointment();
-                
-                if (parentFrame.getLoggedInUser() != null) {
-                    appointment.setPatientId(parentFrame.getLoggedInUser().getUserId()); 
-                } else {
-                    throw new Exception("No user is currently logged in.");
-                }
-                
-                // --- THE FIX ---
-                appointment.setAppointmentDate(appointmentDate);
-                appointment.setAppointmentTime(appointmentTime); // Injects the proper LocalTime object
-                appointment.setStatus("SCHEDULED");
-                
-                // Note for Teammate: Once these fields are added to the Appointment.java model, 
-                // uncomment these to save the rest of the form data!
-                //
-                // appointment.setDepartment(department);
-                // appointment.setDoctorName(doctor);
-                // appointment.setNotes(notes);
-                
-                appointmentController.createAppointment(appointment);
+            JOptionPane.showMessageDialog(this, "Appointment Booked Successfully!\nService: " + department + "\nDate: " + appointmentDate + " at " + appointmentTime);
 
-                JOptionPane.showMessageDialog(this, "Appointment Booked Successfully!");
-                
-                // Clear the form fields after successful booking
-                doctorCombo.setSelectedIndex(0);
-                dateField.setText("");
-                notesArea.setText("");
-                departmentCombo.setSelectedIndex(0);
-                timeSlotCombo.setSelectedIndex(0);
-                
-                parentFrame.showScreen("DASHBOARD_PAGE");
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Error booking appointment: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
+            doctorCombo.setSelectedIndex(0);
+            dateField.setText("");
+            notesArea.setText("");
+            departmentCombo.setSelectedIndex(0);
+            timeSlotCombo.setSelectedIndex(0);
+
+            parentFrame.showScreen("DASHBOARD_PAGE");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error booking appointment: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public JLabel getBackBtn() { return backBtn; }
