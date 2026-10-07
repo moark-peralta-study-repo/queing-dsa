@@ -17,6 +17,8 @@ public class MainFrame extends JFrame {
     private LoginPanel loginCard;
     private RegisterPanel registerCard;
     private PatientDashboardPanel dashboardCard;
+    private AppointmentPanel appointmentCard;
+    private PatientQueuePanel patientQueueCard; // Elevated to class level
     private JPanel topContainer; 
     private org.hospitalqueing.model.User loggedInUser;
 
@@ -75,11 +77,23 @@ public class MainFrame extends JFrame {
         loginCard = new LoginPanel(this);
         registerCard = new RegisterPanel();
         dashboardCard = new PatientDashboardPanel(this);
+        appointmentCard = new AppointmentPanel(this);
+        
+        ProfilePanel profileCard = new ProfilePanel(this); 
+        AppointmentHistoryPanel historyCard = new AppointmentHistoryPanel(this);
+        StaffDashboardPanel staffDashboardCard = new StaffDashboardPanel(this);
+        
+        patientQueueCard = new PatientQueuePanel(this); // Now saves to class variable
 
         mainContentPanel.add(homePage, "LANDING_PAGE");
         mainContentPanel.add(loginCard, "LOGIN_PAGE");
         mainContentPanel.add(registerCard, "REGISTER_PAGE");
         mainContentPanel.add(dashboardCard, "DASHBOARD_PAGE");
+        mainContentPanel.add(appointmentCard, "APPOINTMENT_PAGE");
+        mainContentPanel.add(profileCard, "PROFILE_PAGE");
+        mainContentPanel.add(historyCard, "HISTORY_PAGE");
+        mainContentPanel.add(staffDashboardCard, "ADMIN_DASHBOARD"); 
+        mainContentPanel.add(patientQueueCard, "QUEUE_STATUS_PAGE");
 
         add(mainContentPanel, BorderLayout.CENTER);
 
@@ -125,13 +139,19 @@ public class MainFrame extends JFrame {
             }
 
             try {
-                org.hospitalqueing.service.AuthenticationService authService = new org.hospitalqueing.service.AuthenticationService(new org.hospitalqueing.dao.UserDAO());
-                org.hospitalqueing.service.UserService userService = new org.hospitalqueing.service.UserService(new org.hospitalqueing.dao.UserDAO());
-                org.hospitalqueing.service.PatientService patientService = new org.hospitalqueing.service.PatientService(new org.hospitalqueing.dao.PatientDAO());
+                org.hospitalqueing.dao.UserDAO userDAO = new org.hospitalqueing.dao.UserDAO();
+                org.hospitalqueing.dao.PatientDAO patientDAO = new org.hospitalqueing.dao.PatientDAO();
+
+                org.hospitalqueing.service.UserService userService = new org.hospitalqueing.service.UserService(userDAO);
+                org.hospitalqueing.service.PatientService patientService = new org.hospitalqueing.service.PatientService(patientDAO);
+                org.hospitalqueing.service.AuthenticationService authService = new org.hospitalqueing.service.AuthenticationService(userDAO);
+
+                org.hospitalqueing.controller.UserController userController = new org.hospitalqueing.controller.UserController(userService);
+                org.hospitalqueing.controller.PatientController patientController = new org.hospitalqueing.controller.PatientController(patientService);
 
                 String username = registerCard.getUsername().trim();
 
-                for (org.hospitalqueing.model.User u : userService.getAllUsers()) {
+                for (org.hospitalqueing.model.User u : userController.getAllUsers()) {
                     if (u.getUsername().equalsIgnoreCase(username)) {
                         JOptionPane.showMessageDialog(this, "This username is already registered. Please choose another or log in.", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
@@ -141,12 +161,14 @@ public class MainFrame extends JFrame {
                 org.hospitalqueing.model.User newUser = new org.hospitalqueing.model.User();
                 newUser.setUsername(username);
                 newUser.setPasswordHash(authService.hashPassword(registerCard.getPassword()));
-                newUser.setRoleId(3); 
+                // New accounts are patients. Use the seeded role id (PATIENT) when present.
+                int patientRoleId = org.hospitalqueing.ui.UiData.roleIdByName("PATIENT");
+                newUser.setRoleId(patientRoleId > 0 ? patientRoleId : 3);
                 newUser.setActive(true);
-                userService.createUser(newUser);
+                userController.createUser(newUser);
 
                 int generatedUserId = -1;
-                for (org.hospitalqueing.model.User u : userService.getAllUsers()) {
+                for (org.hospitalqueing.model.User u : userController.getAllUsers()) {
                     if (u.getUsername().equalsIgnoreCase(username)) {
                         generatedUserId = u.getUserId();
                         break;
@@ -163,7 +185,7 @@ public class MainFrame extends JFrame {
                     patient.setSex(registerCard.getSex());
                     patient.setPhone(registerCard.getPhone().trim());
                     
-                    patientService.createPatient(patient);
+                    patientController.registerPatient(patient);
                 } else {
                     throw new RuntimeException("Could not resolve generated user ID for patient linking.");
                 }
@@ -185,10 +207,42 @@ public class MainFrame extends JFrame {
         } else {
             topContainer.setVisible(false);
         }
+        
+        if ("LOGIN_PAGE".equals(screenName) && loginCard != null) {
+            loginCard.clearFields();
+        }
+        
+        if ("PROFILE_PAGE".equals(screenName)) {
+            for (Component comp : mainContentPanel.getComponents()) {
+                if (comp instanceof ProfilePanel) {
+                    ((ProfilePanel) comp).loadUserData();
+                }
+            }
+        }
+        
+        if ("HISTORY_PAGE".equals(screenName)) {
+            for (Component comp : mainContentPanel.getComponents()) {
+                if (comp instanceof AppointmentHistoryPanel) {
+                    ((AppointmentHistoryPanel) comp).loadHistoryData();
+                }
+            }
+        }
+    }
+
+    // --- NEW METHOD: Preselects the department and opens the queue screen ---
+    public void routeToQueueWithDepartment(String department) {
+        if (patientQueueCard != null) {
+            patientQueueCard.preselectDepartment(department);
+        }
+        showScreen("QUEUE_STATUS_PAGE");
     }
 
     public void setLoggedInUser(org.hospitalqueing.model.User user) {
         this.loggedInUser = user;
+    }
+
+    public org.hospitalqueing.model.User getLoggedInUser() {
+        return this.loggedInUser;
     }
 
     public void triggerLogout() {

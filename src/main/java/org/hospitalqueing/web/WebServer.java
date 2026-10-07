@@ -13,6 +13,7 @@ import org.hospitalqueing.dao.ServiceDAO;
 import org.hospitalqueing.database.DatabaseException;
 import org.hospitalqueing.model.Department;
 import org.hospitalqueing.model.QueueEntry;
+import org.hospitalqueing.model.QueueStatus;
 import org.hospitalqueing.model.TicketStatus;
 import org.hospitalqueing.service.QueueManagementService;
 
@@ -112,7 +113,7 @@ public class WebServer {
           int departmentId = Integer.parseInt(ctx.pathParam("departmentId"));
           QueueEntry next =
               queueManagementService.getActiveQueue(departmentId).stream()
-                  .filter(e -> "WAITING".equals(e.getStatus()))
+                  .filter(e -> QueueStatus.WAITING.equals(e.getStatus()))
                   .findFirst()
                   .orElse(null);
           if (next == null) {

@@ -72,6 +72,33 @@ public class UserDAO {
     return null;
   }
 
+  /** Returns the user with the given (case-sensitive) username, or {@code null} if none. */
+  public User findByUsername(String username) {
+    String sql =
+        """
+            SELECT *
+            FROM users
+            WHERE username = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setString(1, username);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+        if (resultSet.next()) {
+          return mapUser(resultSet);
+        }
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return null;
+  }
+
   public void delete(int userId) {
     String sql =
         """

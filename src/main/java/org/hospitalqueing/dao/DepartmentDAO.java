@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,12 +25,18 @@ public class DepartmentDAO {
         """;
 
     try (Connection conn = DatabaseConnection.getConnection();
-        PreparedStatement stmt = conn.prepareStatement(sql)) {
+        PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
       stmt.setString(1, department.getDepartmentName());
       stmt.setInt(2, department.getIsActive() ? 1 : 0);
 
       stmt.executeUpdate();
+
+      try (ResultSet keys = stmt.getGeneratedKeys()) {
+        if (keys.next()) {
+          department.setDepartmentId(keys.getInt(1));
+        }
+      }
     } catch (SQLException e) {
       throw new DatabaseException("Database operation failed", e);
     }

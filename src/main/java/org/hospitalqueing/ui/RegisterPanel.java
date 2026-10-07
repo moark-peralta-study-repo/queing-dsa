@@ -14,11 +14,11 @@ public class RegisterPanel extends JPanel {
     private JLabel backBtn;
     private JLabel loginLink;
     
-    // Form fields mapped to DatabaseConnection schema
+    // Form fields
     private JTextField firstNameField;
     private JTextField middleNameField;
     private JTextField lastNameField;
-    private JTextField usernameField; // Dedicated Username field
+    private JTextField usernameField;
     private JTextField phoneField;
     private JTextField birthDateField;
     private JComboBox<String> sexComboBox;
@@ -31,7 +31,7 @@ public class RegisterPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(WHITE);
 
-        // --- 1. HEADER (Matches wireframe: Back Arrow + Logo) ---
+        // --- 1. HEADER (Consistent with Login and Appointment screens) ---
         JPanel headerPanel = new JPanel(new MigLayout("insets 15 30 15 30, aligny center", "[left]10[left]push", "[center]"));
         headerPanel.setBackground(WHITE);
 
@@ -52,79 +52,78 @@ public class RegisterPanel extends JPanel {
         headerPanel.add(logoLabel);
         headerPanel.add(titleLabel);
 
-        // Separator
         JPanel topContainer = new JPanel(new BorderLayout());
         topContainer.add(headerPanel, BorderLayout.CENTER);
         topContainer.add(new JSeparator(), BorderLayout.SOUTH);
         add(topContainer, BorderLayout.NORTH);
 
-        // --- 2. FORM BODY (Centered, matching wireframe layout) ---
-        JPanel formContainer = new JPanel(new MigLayout("wrap, insets 40 20 40 20", "[center]", "[]20[]"));
-        formContainer.setBackground(WHITE);
+        // --- 2. FORM BODY CARD (Centered modern card layout) ---
+        JPanel centerWrapper = new JPanel(new GridBagLayout());
+        centerWrapper.setBackground(new Color(240, 244, 248));
 
-        JLabel createAccTitle = new JLabel("CREATE ACCOUNT");
-        createAccTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
-        createAccTitle.setForeground(TEXT_DARK);
-        formContainer.add(createAccTitle, "wrap, gapbottom 20");
+        JPanel card = new JPanel(new MigLayout("wrap 2, insets 25 35 25 35, center", "[right, 110]15[left, grow, fill]", "[]12[]10[]10[]10[]10[]10[]10[]15[]15[]10[]"));
+        card.setBackground(WHITE);
+        card.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 1, true));
 
-        // Inner form panel holding the actual inputs
-        JPanel form = new JPanel(new MigLayout("wrap 2, insets 0", "[right]15[left, grow, fill]", "[]15[]"));
-        form.setBackground(WHITE);
-        
-        String fieldConstraints = "width 250:300:300, height 35!";
+        JLabel formTitle = new JLabel("Create Account");
+        formTitle.setFont(new Font("SansSerif", Font.BOLD, 22));
+        formTitle.setForeground(TEXT_DARK);
 
         firstNameField = new JTextField();
         middleNameField = new JTextField();
         lastNameField = new JTextField();
-        usernameField = new JTextField(); // Standalone Username
+        usernameField = new JTextField();
         phoneField = new JTextField();
         birthDateField = new JTextField();
         birthDateField.setToolTipText("YYYY-MM-DD");
         sexComboBox = new JComboBox<>(new String[]{"Select", "Male", "Female", "Other"});
         passwordField = new JPasswordField();
 
-        // Add fields to form
-        form.add(new JLabel("First Name:")); form.add(firstNameField, fieldConstraints);
-        form.add(new JLabel("Middle Name:")); form.add(middleNameField, fieldConstraints);
-        form.add(new JLabel("Last Name:")); form.add(lastNameField, fieldConstraints);
-        form.add(new JLabel("Username:")); form.add(usernameField, fieldConstraints); // Clear separate username
-        form.add(new JLabel("Phone Number:")); form.add(phoneField, fieldConstraints);
-        form.add(new JLabel("Birth Date (YYYY-MM-DD):")); form.add(birthDateField, fieldConstraints);
-        form.add(new JLabel("Sex:")); form.add(sexComboBox, fieldConstraints);
-        form.add(new JLabel("Password:")); form.add(passwordField, fieldConstraints);
+        String fieldConstraints = "width 240!, height 32!";
 
-        formContainer.add(form);
-
-        // Checkbox, Submit Button, and Login Link
-        JPanel bottomActionPanel = new JPanel(new MigLayout("wrap, center", "[center]", "[]15[]10[]"));
-        bottomActionPanel.setBackground(WHITE);
+        card.add(formTitle, "span 2, center, gapbottom 5");
+        
+        card.add(new JLabel("First Name:")); card.add(firstNameField, fieldConstraints);
+        card.add(new JLabel("Middle Name:")); card.add(middleNameField, fieldConstraints);
+        card.add(new JLabel("Last Name:")); card.add(lastNameField, fieldConstraints);
+        card.add(new JLabel("Username:")); card.add(usernameField, fieldConstraints);
+        card.add(new JLabel("Phone Number:")); card.add(phoneField, fieldConstraints);
+        card.add(new JLabel("Birth Date (YYYY-MM-DD):")); card.add(birthDateField, fieldConstraints);
+        card.add(new JLabel("Sex:")); card.add(sexComboBox, fieldConstraints);
+        card.add(new JLabel("Password:")); card.add(passwordField, fieldConstraints);
 
         termsCheckbox = new JCheckBox("I agree to the terms and conditions");
         termsCheckbox.setBackground(WHITE);
-        bottomActionPanel.add(termsCheckbox);
+        card.add(termsCheckbox, "span 2, center, gaptop 5");
 
         submitBtn = new JButton("Create Account");
-        submitBtn.setPreferredSize(new Dimension(300, 40));
         submitBtn.setBackground(PRIMARY_BLUE);
         submitBtn.setForeground(WHITE);
         submitBtn.setFont(new Font("SansSerif", Font.BOLD, 14));
         submitBtn.setFocusPainted(false);
-        bottomActionPanel.add(submitBtn);
+        submitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        card.add(submitBtn, "span 2, center, width 260!, height 38!");
 
         loginLink = new JLabel("<html><u>Already have an account? Log in</u></html>");
         loginLink.setForeground(PRIMARY_BLUE);
         loginLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        bottomActionPanel.add(loginLink);
+        card.add(loginLink, "span 2, center");
 
-        formContainer.add(bottomActionPanel);
+        centerWrapper.add(card);
 
-        // Scroll Pane Setup (Scrollable logic retained, but vertical scrollbar hidden visually)
-        JScrollPane scrollPane = new JScrollPane(formContainer);
+        // Scroll Pane Wrapper to handle fit smoothly
+        JScrollPane scrollPane = new JScrollPane(centerWrapper);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); 
+        
         add(scrollPane, BorderLayout.CENTER);
+
+        // Force scrollbar to stay locked firmly at the absolute top on load
+        SwingUtilities.invokeLater(() -> {
+            scrollPane.getVerticalScrollBar().setValue(0);
+            scrollPane.getViewport().setViewPosition(new Point(0, 0));
+        });
     }
 
     // --- Getters for MainFrame routing & database mapping ---

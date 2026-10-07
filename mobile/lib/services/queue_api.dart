@@ -45,7 +45,7 @@ class Ticket {
       token: json['token'] as String? ?? '',
       queueId: (json['queueId'] as num?)?.toInt() ?? 0,
       queueNumber: (json['queueNumber'] as num?)?.toInt() ?? 0,
-      status: json['status'] as String? ?? 'WAITING',
+      status: json['status'] as String? ?? 'Waiting',
       departmentName: json['departmentName'] as String?,
       serviceName: json['serviceName'] as String?,
       priorityType: json['priorityType'] as String?,
@@ -58,7 +58,11 @@ class Ticket {
     );
   }
 
-  bool get isCalled => status == 'CALLED';
+  /// "It's your turn" — the ticket was just called to the counter.
+  bool get isCalled => status == 'Checked In';
+
+  /// Currently being served at a counter.
+  bool get isInService => status == 'In Consultation';
 
   bool get isSpecialPriority => priorityType != null && priorityType != 'REGULAR';
 }

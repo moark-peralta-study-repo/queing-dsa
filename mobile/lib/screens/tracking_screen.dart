@@ -122,7 +122,10 @@ class _TrackingScreenState extends State<TrackingScreen> {
   Widget _buildContent(Ticket t, ThemeData theme) {
     if (t.isCalled) return _CalledScreen(ticket: t);
     switch (t.status) {
-      case 'IN_SERVICE':
+      case 'In Consultation':
+      case 'For Laboratory':
+      case 'For Pharmacy':
+        // Active at the hospital (consultation or sent for lab/pharmacy).
         return _StatusScreen(
           color: Colors.green,
           icon: Icons.check_circle,
@@ -130,7 +133,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
           subtitle: t.counterName != null ? 'At ${t.counterName}' : null,
           ticket: t,
         );
-      case 'COMPLETED':
+      case 'Completed':
         return _StatusScreen(
           color: Colors.blueGrey,
           icon: Icons.done_all,
@@ -138,15 +141,15 @@ class _TrackingScreenState extends State<TrackingScreen> {
           subtitle: 'Thank you! Rate your visit at the desk.',
           ticket: t,
         );
-      case 'SKIPPED':
+      case 'Discharged':
         return _StatusScreen(
-          color: Colors.orange,
-          icon: Icons.person_off,
-          title: 'You were skipped',
-          subtitle: 'Please return to the registration desk.',
+          color: Colors.teal,
+          icon: Icons.local_hospital,
+          title: 'Discharged',
+          subtitle: 'See you next time. Rate your visit at the desk.',
           ticket: t,
         );
-      case 'NO_SHOW':
+      case 'No Show':
         return _StatusScreen(
           color: Colors.red,
           icon: Icons.event_busy,

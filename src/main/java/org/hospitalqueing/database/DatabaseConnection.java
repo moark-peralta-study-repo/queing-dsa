@@ -208,7 +208,7 @@ public class DatabaseConnection {
 
             priority_type TEXT NOT NULL DEFAULT 'REGULAR',
 
-            status TEXT NOT NULL DEFAULT 'WAITING',
+            status TEXT NOT NULL DEFAULT 'Waiting',
 
             qr_token TEXT UNIQUE,
 
@@ -247,14 +247,14 @@ public class DatabaseConnection {
 
             CHECK (
                 status IN (
-                    'WAITING',
-                    'CALLED',
-                    'IN_SERVICE',
-                    'COMPLETED',
-                    'SKIPPED',
-                    'NO_SHOW',
-                    'CANCELLED',
-                    'TRANSFERRED'
+                    'Waiting',
+                    'Checked In',
+                    'In Consultation',
+                    'For Laboratory',
+                    'For Pharmacy',
+                    'Discharged',
+                    'Completed',
+                    'No Show'
                 )
             ),
 
@@ -366,10 +366,49 @@ public class DatabaseConnection {
       statement.executeUpdate(createPayments);
       statement.executeUpdate(createFeedback);
 
+      // Migrate data from the previous (uppercase) status vocabulary so existing DBs
+      // line up with the queue_entries CHECK constraint used by the staff panels.
+      // No-op when already on the new vocabulary.
+      migrateQueueStatusVocabulary(statement);
+
       System.out.println("Database initialized successfully.");
 
     } catch (SQLException e) {
       throw new DatabaseException("Database initialization failed", e);
+    }
+  }
+
+  /**
+   * Rewrites legacy queue status values to the current vocabulary. The mapping is a best effort
+   * for the old machine-oriented names:
+   *
+   * <pre>
+   *   WAITING        -> Waiting
+   *   CALLED         -> Checked In
+   *   IN_SERVICE     -> In Consultation
+   *   SKIPPED        -> No Show
+   *   TRANSFERRED    -> For Laboratory
+   *   CANCELLED      -> No Show
+   *   COMPLETED      -> Completed
+   *   NO_SHOW        -> No Show
+   * </pre>
+   *
+   * Each update is idempotent (the source value no longer exists afterwards), so this is safe to
+   * run on every startup.
+   */
+  private static void migrateQueueStatusVocabulary(Statement statement) throws SQLException {
+    String[][] migrations = {
+      {"WAITING", "Waiting"},
+      {"CALLED", "Checked In"},
+      {"IN_SERVICE", "In Consultation"},
+      {"SKIPPED", "No Show"},
+      {"TRANSFERRED", "For Laboratory"},
+      {"CANCELLED", "No Show"},
+      {"NO_SHOW", "No Show"},
+    };
+    for (String[] m : migrations) {
+      String sql = "UPDATE queue_entries SET status = '" + m[1] + "' WHERE status = '" + m[0] + "'";
+      statement.executeUpdate(sql);
     }
   }
 }

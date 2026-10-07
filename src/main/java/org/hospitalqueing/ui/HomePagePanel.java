@@ -97,9 +97,15 @@ public class HomePagePanel extends JPanel {
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16); 
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); // Hides scrollbar visually
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0)); 
 
         add(scrollPane, BorderLayout.CENTER);
+
+        // Force scrollbar to lock firmly at the absolute top on startup
+        SwingUtilities.invokeLater(() -> {
+            scrollPane.getVerticalScrollBar().setValue(0);
+            scrollPane.getViewport().setViewPosition(new Point(0, 0));
+        });
     }
 
     // --- SCROLLING LOGIC ---
@@ -110,7 +116,6 @@ public class HomePagePanel extends JPanel {
 
     private void scrollToComponent(Component target) {
         SwingUtilities.invokeLater(() -> {
-            // Accurately calculates the Y position of the target relative to the scroll container
             int targetY = SwingUtilities.convertPoint(target, 0, 0, scrollContentPanel).y;
             scrollPane.getVerticalScrollBar().setValue(targetY);
         });

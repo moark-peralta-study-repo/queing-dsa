@@ -80,6 +80,7 @@ public class LoginPanel extends JPanel {
         loginBtn.setForeground(WHITE);
         loginBtn.setFont(new Font("SansSerif", Font.BOLD, 14));
         loginBtn.setFocusPainted(false);
+        loginBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         registerLink = new JLabel("<html><u>Don't have an account? Register</u></html>");
         registerLink.setForeground(PRIMARY_BLUE);
@@ -117,16 +118,33 @@ public class LoginPanel extends JPanel {
                 return;
             }
 
+            // --- HARDCODED STAFF BYPASS FOR UI TESTING ---
+            if (username.equals("staff") && password.equals("admin")) {
+                org.hospitalqueing.model.User dummyStaff = new org.hospitalqueing.model.User();
+                dummyStaff.setUserId(999); // Dummy ID
+                dummyStaff.setUsername("Dr. Tester");
+                int staffRoleId = org.hospitalqueing.ui.UiData.roleIdByName("STAFF");
+                dummyStaff.setRoleId(staffRoleId > 0 ? staffRoleId : 2); // 2 = STAFF in the seed
+                parentFrame.setLoggedInUser(dummyStaff);
+                clearFields();
+                JOptionPane.showMessageDialog(this, "Test Login Successful! Welcome to the Staff Portal.");
+                parentFrame.showScreen("ADMIN_DASHBOARD");
+                return; // Stop here so it doesn't try to query the database
+            }
+            // ---------------------------------------------
+
             try {
-                AuthenticationService authService = new AuthenticationService(new UserDAO());
+                UserDAO userDAO = new UserDAO();
+                AuthenticationService authService = new AuthenticationService(userDAO);
                 User loggedInUser = authService.login(username, password);
 
                 if (loggedInUser != null) {
                     parentFrame.setLoggedInUser(loggedInUser);
-                    clearFields(); // Clears the username and password fields upon successful login
+                    clearFields();
                     JOptionPane.showMessageDialog(this, "Login Successful! Welcome back, " + loggedInUser.getUsername());
-                    
-                    if (loggedInUser.getRoleId() == 1) {
+
+                    // Route by role name, not by hardcoded id (PATIENT/STAFF/ADMIN are seeded).
+                    if (org.hospitalqueing.ui.UiData.isStaff(loggedInUser)) {
                         parentFrame.showScreen("ADMIN_DASHBOARD");
                     } else {
                         parentFrame.showScreen("DASHBOARD_PAGE");
@@ -141,7 +159,6 @@ public class LoginPanel extends JPanel {
         });
     }
 
-    // Clears the fields when called
     public void clearFields() {
         usernameField.setText("");
         passwordField.setText("");
