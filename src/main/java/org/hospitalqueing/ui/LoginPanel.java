@@ -118,20 +118,8 @@ public class LoginPanel extends JPanel {
                 return;
             }
 
-            // --- HARDCODED STAFF BYPASS FOR UI TESTING ---
-            if (username.equals("staff") && password.equals("admin")) {
-                org.hospitalqueing.model.User dummyStaff = new org.hospitalqueing.model.User();
-                dummyStaff.setUserId(999); // Dummy ID
-                dummyStaff.setUsername("Dr. Tester");
-                int staffRoleId = org.hospitalqueing.ui.UiData.roleIdByName("STAFF");
-                dummyStaff.setRoleId(staffRoleId > 0 ? staffRoleId : 2); // 2 = STAFF in the seed
-                parentFrame.setLoggedInUser(dummyStaff);
-                clearFields();
-                JOptionPane.showMessageDialog(this, "Test Login Successful! Welcome to the Staff Portal.");
-                parentFrame.showScreen("ADMIN_DASHBOARD");
-                return; // Stop here so it doesn't try to query the database
-            }
-            // ---------------------------------------------
+            // (The old hardcoded staff/admin UI-test bypass was removed: staff/staff is a real
+            //  seeded account, and setLoggedInUser now routes every role to the right screen.)
 
             try {
                 UserDAO userDAO = new UserDAO();
@@ -139,16 +127,10 @@ public class LoginPanel extends JPanel {
                 User loggedInUser = authService.login(username, password);
 
                 if (loggedInUser != null) {
+                    // setLoggedInUser stores the user and routes to the role's dashboard.
                     parentFrame.setLoggedInUser(loggedInUser);
                     clearFields();
                     JOptionPane.showMessageDialog(this, "Login Successful! Welcome back, " + loggedInUser.getUsername());
-
-                    // Route by role name, not by hardcoded id (PATIENT/STAFF/ADMIN are seeded).
-                    if (org.hospitalqueing.ui.UiData.isStaff(loggedInUser)) {
-                        parentFrame.showScreen("ADMIN_DASHBOARD");
-                    } else {
-                        parentFrame.showScreen("DASHBOARD_PAGE");
-                    }
                 } else {
                     JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Failed", JOptionPane.ERROR_MESSAGE);
                 }

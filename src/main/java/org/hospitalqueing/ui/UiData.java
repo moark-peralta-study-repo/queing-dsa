@@ -282,6 +282,12 @@ public final class UiData {
     return n.contains("STAFF") || n.contains("ADMIN");
   }
 
+  /** True when the user's role is specifically an admin (the management dashboard gate). */
+  public static boolean isAdmin(User user) {
+    String name = roleNameForUser(user);
+    return name != null && name.toUpperCase().contains("ADMIN");
+  }
+
   // --- internals ---
 
   private static Department findDepartment(int departmentId) {
