@@ -19,24 +19,26 @@ public class DoctorDAO {
     String sql =
         """
           INSERT INTO doctors (
+            user_id,
             department_id,
             first_name,
             last_name,
             license_number,
             is_active
           )
-          VALUES (?, ?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?, ?)
         """;
 
     try (Connection connection = DatabaseConnection.getConnection();
         PreparedStatement statement =
             connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-      statement.setInt(1, doctor.getDepartmentId());
-      statement.setString(2, doctor.getFirstName());
-      statement.setString(3, doctor.getLastName());
-      statement.setString(4, doctor.getLicenseNum());
-      statement.setInt(5, doctor.isActive() ? 1 : 0);
+      statement.setInt(1, doctor.getUserId());
+      statement.setInt(2, doctor.getDepartmentId());
+      statement.setString(3, doctor.getFirstName());
+      statement.setString(4, doctor.getLastName());
+      statement.setString(5, doctor.getLicenseNum());
+      statement.setInt(6, doctor.isActive() ? 1 : 0);
 
       statement.executeUpdate();
 
@@ -105,6 +107,35 @@ public class DoctorDAO {
     return doctors;
   }
 
+  /** The doctor linked to a login account, or null. Mirrors StaffDAO.findByUser. */
+  public Doctor findByUser(int userId) {
+
+    String sql =
+        """
+          SELECT *
+          FROM doctors
+          WHERE user_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, userId);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+
+        if (resultSet.next()) {
+          return mapDoctor(resultSet);
+        }
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return null;
+  }
+
   public List<Doctor> findByDepartment(int departmentId) {
 
     String sql =
@@ -140,7 +171,8 @@ public class DoctorDAO {
     String sql =
         """
           UPDATE doctors
-          SET department_id = ?,
+          SET user_id = ?,
+              department_id = ?,
               first_name = ?,
               last_name = ?,
               license_number = ?,
@@ -151,12 +183,13 @@ public class DoctorDAO {
     try (Connection connection = DatabaseConnection.getConnection();
         PreparedStatement statement = connection.prepareStatement(sql)) {
 
-      statement.setInt(1, doctor.getDepartmentId());
-      statement.setString(2, doctor.getFirstName());
-      statement.setString(3, doctor.getLastName());
-      statement.setString(4, doctor.getLicenseNum());
-      statement.setInt(5, doctor.isActive() ? 1 : 0);
-      statement.setInt(6, doctor.getDoctorId());
+      statement.setInt(1, doctor.getUserId());
+      statement.setInt(2, doctor.getDepartmentId());
+      statement.setString(3, doctor.getFirstName());
+      statement.setString(4, doctor.getLastName());
+      statement.setString(5, doctor.getLicenseNum());
+      statement.setInt(6, doctor.isActive() ? 1 : 0);
+      statement.setInt(7, doctor.getDoctorId());
 
       statement.executeUpdate();
 
@@ -190,6 +223,10 @@ public class DoctorDAO {
     Doctor doctor = new Doctor();
 
     doctor.setDoctorId(resultSet.getInt("doctor_id"));
+
+    // user_id arrives from the DOCTOR-role migration; guard so pre-migration DBs can't break reads.
+    int userCol = resultSet.findColumn("user_id");
+    doctor.setUserId(userCol == 0 ? 0 : resultSet.getInt(userCol));
 
     doctor.setDepartmentId(resultSet.getInt("department_id"));
 

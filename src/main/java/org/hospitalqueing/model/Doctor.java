@@ -2,6 +2,7 @@ package org.hospitalqueing.model;
 
 public class Doctor {
   private int doctorId;
+  private int userId;
   private int departmentId;
   private String firstName;
   private String lastName;
@@ -31,6 +32,15 @@ public class Doctor {
 
   public void setDoctorId(int doctorId) {
     this.doctorId = doctorId;
+  }
+
+  /** The linked login account (0 when the doctor has no user yet — see the DOCTOR role migration). */
+  public int getUserId() {
+    return userId;
+  }
+
+  public void setUserId(int userId) {
+    this.userId = userId;
   }
 
   public int getDepartmentId() {
