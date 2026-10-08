@@ -161,13 +161,13 @@ public class StaffWalkInPanel extends JPanel {
 
             QueueEntry saved = qms.joinQueue(entry);
 
-            JOptionPane.showMessageDialog(this,
-                    "Walk-in registered successfully!\n\n" +
-                    "Patient: " + fullName + "\n" +
-                    "Department: " + department + "\n" +
-                    "Ticket: #" + saved.getQueueNumber() + "\n" +
-                    "QR Token: " + saved.getQrToken(),
-                    "Registration Success", JOptionPane.INFORMATION_MESSAGE);
+            // Show the real ticket: scannable QR of the token, not a plain string.
+            TicketDialog.show(this,
+                    "Walk-in registered successfully!",
+                    department,
+                    saved.getQueueNumber(),
+                    saved.getQrToken(),
+                    "Patient: " + fullName);
 
             // Clear form after success
             fullNameField.setText("");
