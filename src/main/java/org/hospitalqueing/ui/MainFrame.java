@@ -21,6 +21,7 @@ public class MainFrame extends JFrame {
     private PatientQueuePanel patientQueueCard; // Elevated to class level
     private AdminDashboardPanel adminDashboardCard;
     private DoctorDashboardPanel doctorDashboardCard;
+    private WaitingRoomPanel waitingRoomCard;
     private JPanel topContainer; 
     private org.hospitalqueing.model.User loggedInUser;
 
@@ -88,6 +89,7 @@ public class MainFrame extends JFrame {
         doctorDashboardCard = new DoctorDashboardPanel(this);
         
         patientQueueCard = new PatientQueuePanel(this); // Now saves to class variable
+        waitingRoomCard = new WaitingRoomPanel();
 
         mainContentPanel.add(homePage, "LANDING_PAGE");
         mainContentPanel.add(loginCard, "LOGIN_PAGE");
@@ -100,6 +102,7 @@ public class MainFrame extends JFrame {
         mainContentPanel.add(adminDashboardCard, "ADMIN_DASHBOARD");
         mainContentPanel.add(doctorDashboardCard, "DOCTOR_DASHBOARD");
         mainContentPanel.add(patientQueueCard, "QUEUE_STATUS_PAGE");
+        mainContentPanel.add(waitingRoomCard, "WAITING_ROOM");
 
         add(mainContentPanel, BorderLayout.CENTER);
 
@@ -232,6 +235,10 @@ public class MainFrame extends JFrame {
                     ((AppointmentHistoryPanel) comp).loadHistoryData();
                 }
             }
+        }
+        
+        if ("WAITING_ROOM".equals(screenName) && waitingRoomCard != null) {
+            waitingRoomCard.refresh();
         }
     }
 
