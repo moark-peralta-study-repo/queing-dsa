@@ -5,23 +5,49 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.hospitalqueing.dao.AppointmentDAO;
+import org.hospitalqueing.dao.PatientDAO;
+import org.hospitalqueing.dao.QueueEntryDAO;
 import org.hospitalqueing.model.Appointment;
+import org.hospitalqueing.model.Patient;
+import org.hospitalqueing.model.QueueEntry;
 import org.hospitalqueing.model.User;
 
+/**
+ * Patient-facing history screen (T5): lists the logged-in patient's appointments AND queue
+ * entries in one table, with a filter bar on top — date range (start/end, both optional:
+ * leave either blank to bound only one side), record type (All / Queue / Appointment),
+ * department, and patient-name free text (case-insensitive substring match).
+ *
+ * <p>Re-querying happens on {@link #loadHistoryData()} (MainFrame calls it every time the
+ * screen opens) and on the filter bar's Refresh button; filter field changes alone do not
+ * trigger a query, matching the rest of the app's click-driven style.
+ */
 public class AppointmentHistoryPanel extends JPanel {
 
     private final Color PRIMARY_BLUE = new Color(21, 101, 192);
     private final Color TEXT_DARK = new Color(45, 55, 72);
     private final Color WHITE = Color.WHITE;
     private final Color BACKGROUND_LIGHT = new Color(240, 244, 248);
+    private final Color CONTROL_BORDER = new Color(220, 220, 220);
 
     private JLabel backBtn;
     private JTable historyTable;
     private DefaultTableModel tableModel;
     private MainFrame parentFrame;
+
+    // Filter bar controls
+    private JComponent filterPanel;
+    private JTextField startField;
+    private JTextField endField;
+    private JComboBox<String> typeCombo;
+    private JComboBox<String> departmentCombo;
+    private JTextField nameField;
+    private JButton refreshBtn;
 
     public AppointmentHistoryPanel(MainFrame parentFrame) {
         this.parentFrame = parentFrame;
@@ -40,7 +66,7 @@ public class AppointmentHistoryPanel extends JPanel {
         JLabel logoLabel = new JLabel("✚");
         logoLabel.setForeground(PRIMARY_BLUE);
         logoLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
-        
+
         JLabel titleLabel = new JLabel("HOSPITAL - APPOINTMENT HISTORY");
         titleLabel.setForeground(PRIMARY_BLUE);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -88,10 +114,15 @@ public class AppointmentHistoryPanel extends JPanel {
         tableHeader.setPreferredSize(new Dimension(100, 40));
 
         JScrollPane tableScroll = new JScrollPane(historyTable);
-        tableScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220)));
+        tableScroll.setBorder(BorderFactory.createLineBorder(CONTROL_BORDER));
         tableScroll.getViewport().setBackground(WHITE);
 
-        centerWrapper.add(tableScroll, BorderLayout.CENTER);
+        // --- 2b. FILTER BAR (above the table, inside the same card) ---
+        JPanel bodyPanel = new JPanel(new BorderLayout());
+        bodyPanel.setBackground(BACKGROUND_LIGHT);
+        bodyPanel.add(buildFilterBar(), BorderLayout.NORTH);
+        bodyPanel.add(tableScroll, BorderLayout.CENTER);
+        centerWrapper.add(bodyPanel, BorderLayout.CENTER);
         add(centerWrapper, BorderLayout.CENTER);
 
         // --- 3. WIRING ACTIONS ---
@@ -102,36 +133,236 @@ public class AppointmentHistoryPanel extends JPanel {
         });
     }
 
-    // Called by MainFrame every time this screen opens to load fresh data
-    public void loadHistoryData() {
-        tableModel.setRowCount(0); // Clear existing rows
+    // ================= FILTER BAR =================
 
-        if (parentFrame.getLoggedInUser() == null) {
+    private JComponent buildFilterBar() {
+        String[] deptNames = UiData.departmentNames();
+        String[] deptItems = new String[deptNames.length + 1];
+        deptItems[0] = "All Departments";
+        System.arraycopy(deptNames, 0, deptItems, 1, deptNames.length);
+
+        typeCombo = new JComboBox<>(new String[]{"All", "Queue", "Appointment"});
+        departmentCombo = new JComboBox<>(deptItems);
+        startField = new JTextField(10);
+        endField = new JTextField(10);
+        nameField = new JTextField(10);
+        startField.putClientProperty("JTextField.placeholderText", "From YYYY-MM-DD");
+        endField.putClientProperty("JTextField.placeholderText", "To YYYY-MM-DD");
+        nameField.putClientProperty("JTextField.placeholderText", "Patient name");
+
+        Font controlFont = new Font("SansSerif", Font.PLAIN, 13);
+        for (JComponent c : new JComponent[]{typeCombo, departmentCombo, startField, endField, nameField}) {
+            c.setFont(controlFont);
+            c.setBackground(WHITE);
+            c.setBorder(BorderFactory.createLineBorder(CONTROL_BORDER));
+        }
+        typeCombo.setPreferredSize(new Dimension(150, 34));
+        departmentCombo.setPreferredSize(new Dimension(190, 34));
+        refreshBtn = new JButton("Refresh");
+        refreshBtn.setBackground(PRIMARY_BLUE);
+        refreshBtn.setForeground(WHITE);
+        refreshBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        refreshBtn.setFocusPainted(false);
+        refreshBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        refreshBtn.setPreferredSize(new Dimension(100, 34));
+
+        JPanel panel = new JPanel(new MigLayout(
+                "insets 14 20 14 20, gap 10 14, fillx",
+                "[left, grow, fill]"));
+        panel.setBackground(BACKGROUND_LIGHT);
+        panel.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, 0));
+        // Row 1: date range + record type
+        panel.add(new JLabel("Date:"), "align right");
+        panel.add(startField, "w 140!");
+        panel.add(new JLabel("–"), "align center");
+        panel.add(endField, "w 140!");
+        panel.add(new JLabel("Type:"), "align right");
+        panel.add(typeCombo, "w 140!, wrap");
+        // Row 2: department + patient name + refresh
+        panel.add(new JLabel("Department:"), "align right");
+        panel.add(departmentCombo, "w 180!");
+        panel.add(new JLabel("Patient:"), "align right");
+        panel.add(nameField, "w 140!");
+        panel.add(refreshBtn, "w 100!");
+        refreshBtn.addActionListener(e -> loadHistoryData());
+        filterPanel = panel;
+        return panel;
+    }
+
+    // ================= DATA LOADING =================
+
+    /**
+     * Called by MainFrame every time this screen opens, and by the Refresh button, to load
+     * fresh filtered data.
+     */
+    public void loadHistoryData() {
+        if (parentFrame == null) {
+            return;
+        }
+        // Always refresh the table on a clean slate; if there's no user yet, show nothing.
+        tableModel.setRowCount(0);
+
+        User user = parentFrame.getLoggedInUser();
+        if (user == null) {
             return;
         }
 
-        User user = parentFrame.getLoggedInUser();
-        int patientId = UiData.patientIdForUser(user);
-        if (patientId < 0) {
+        Patient patient = UiData.patientProfileForUser(user);
+        if (patient == null) {
             // No patient profile linked to this account; nothing to show.
             return;
         }
+        int patientId = patient.getPatientId();
+
+        LocalDate from = parseFilterDate(startField);
+        LocalDate to = parseFilterDate(endField);
+        String type = (String) typeCombo.getSelectedItem();
+        String deptName = (String) departmentCombo.getSelectedItem();
+        int deptId = (deptName == null || "All Departments".equals(deptName))
+                ? -1 : UiData.departmentIdByName(deptName);
+        String nameQ = nameField.getText().trim().toLowerCase();
 
         try {
-            AppointmentDAO dao = new AppointmentDAO();
-            List<Appointment> appointments = dao.findByPatient(patientId);
+            List<HistoryRow> rows = new ArrayList<>();
+            rows.addAll(queryAppointments(patientId, from, to, type, deptId));
+            rows.addAll(queryQueueEntries(patientId, from, to, type, deptId));
 
-            for (Appointment appt : appointments) {
-                String date = appt.getAppointmentDate() != null ? appt.getAppointmentDate().toString() : "--";
-                String deptName = UiData.departmentNameForService(appt.getServiceId());
-                String doctorName = appt.getDoctorId() != null ? UiData.doctorName(appt.getDoctorId()) : "--";
-                String type = "Appointment";
-                String status = appt.getStatus() == null ? "--" : appt.getStatus();
+            if (!nameQ.isEmpty()) {
+                String displayName = patientName(patient);
+                List<HistoryRow> kept = new ArrayList<>();
+                for (HistoryRow r : rows) {
+                    if (displayName.toLowerCase().contains(nameQ)) {
+                        kept.add(r);
+                    }
+                }
+                rows = kept;
+            }
 
-                tableModel.addRow(new Object[]{date, deptName, doctorName, type, status});
+            rows.sort((a, b) -> a.dateStr.compareTo(b.dateStr));
+
+            for (HistoryRow r : rows) {
+                tableModel.addRow(new Object[]{r.dateStr, r.deptName, r.doctorName, r.type, r.status});
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+    /** A merged (appointment | queue-entry) table row. */
+    private static final class HistoryRow {
+        String dateStr;
+        String deptName;
+        String doctorName;
+        String type;
+        String status;
+
+        HistoryRow(String dateStr, String deptName, String doctorName, String type, String status) {
+            this.dateStr = dateStr;
+            this.deptName = deptName;
+            this.doctorName = doctorName;
+            this.type = type;
+            this.status = status;
+        }
+    }
+
+    /** Queries appointments for the patient, applying the active date/type/department filters. */
+    private List<HistoryRow> queryAppointments(int patientId, LocalDate from, LocalDate to,
+                                               String type, int deptId) {
+        List<HistoryRow> out = new ArrayList<>();
+        if ("Queue".equals(type)) {
+            return out;
+        }
+        for (Appointment appt : new AppointmentDAO().findByPatient(patientId)) {
+            LocalDate d = appt.getAppointmentDate();
+            if (d == null || (from != null && d.isBefore(from)) || (to != null && d.isAfter(to))) {
+                continue;
+            }
+            if (deptId > 0 && serviceDepartmentId(appt.getServiceId()) != deptId) {
+                continue;
+            }
+            String deptName = appt.getServiceId() > 0 ? UiData.departmentNameForService(appt.getServiceId()) : null;
+            if (deptName == null) deptName = "--";
+            String doctorName = appt.getDoctorId() != null ? UiData.doctorName(appt.getDoctorId()) : "--";
+            if (doctorName == null) doctorName = "--";
+            String status = appt.getStatus() == null ? "--" : appt.getStatus();
+            out.add(new HistoryRow(d.toString(), deptName, doctorName, "Appointment", status));
+        }
+        return out;
+    }
+
+    /** Queries queue entries for the patient, applying the active date/type/department filters. */
+    private List<HistoryRow> queryQueueEntries(int patientId, LocalDate from, LocalDate to,
+                                               String type, int deptId) {
+        List<HistoryRow> out = new ArrayList<>();
+        if ("Appointment".equals(type)) {
+            return out;
+        }
+        for (QueueEntry q : new QueueEntryDAO().findByPatient(patientId)) {
+            LocalDate d;
+            try {
+                d = q.getQueueDate() != null ? LocalDate.parse(q.getQueueDate()) : null;
+            } catch (Exception ex) {
+                d = null;
+            }
+            if (d == null || (from != null && d.isBefore(from)) || (to != null && d.isAfter(to))) {
+                continue;
+            }
+            if (deptId > 0 && q.getDepartmentId() != deptId) {
+                continue;
+            }
+            String deptName = q.getDepartmentId() > 0 ? UiData.departmentName(q.getDepartmentId()) : null;
+            if (deptName == null) deptName = "--";
+            String doctorName = q.getDoctorId() != null ? UiData.doctorName(q.getDoctorId()) : "--";
+            if (doctorName == null) doctorName = "--";
+            String status = q.getStatus() == null ? "--" : q.getStatus();
+            out.add(new HistoryRow(d.toString(), deptName, doctorName, "Queue", status));
+        }
+        return out;
+    }
+
+    /** Resolves the department id for a service, or -1 when the service row is gone. */
+    private static int serviceDepartmentId(int serviceId) {
+        if (serviceId <= 0) {
+            return -1;
+        }
+        org.hospitalqueing.model.Service s =
+                new org.hospitalqueing.dao.ServiceDAO().findById(serviceId);
+        return s == null ? -1 : s.getDepartmentId();
+    }
+
+    /** Display name ("First Last") for a patient row, falling back to "Patient #id". */
+    private static String patientName(Patient patient) {
+        String name = (patient.getFirstName() == null ? "" : patient.getFirstName().trim())
+                + " "
+                + (patient.getLastName() == null ? "" : patient.getLastName().trim());
+        return name.isBlank() ? "Patient #" + patient.getPatientId() : name.trim();
+    }
+
+    /** Parses a filter date field (YYYY-MM-DD); empty or malformed fields mean "no bound". */
+    private static LocalDate parseFilterDate(JTextField field) {
+        if (field == null) {
+            return null;
+        }
+        String s = field.getText().trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(s);
+        } catch (Exception ex) {
+            return null; // Invalid bound is treated as no bound rather than crashing the query.
+        }
+    }
+
+    // ================= SMOKE-TEST ACCESSORS =================
+
+    /** The history JTable (for verification harnesses). */
+    public JTable getHistoryTable() {
+        return historyTable;
+    }
+
+    /** The filter bar container (so a harness can reach the filter fields). */
+    public JComponent getFilterPanel() {
+        return filterPanel;
     }
 }
