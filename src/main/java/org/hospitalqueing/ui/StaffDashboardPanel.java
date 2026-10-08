@@ -5,6 +5,20 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDate;
+import java.util.List;
+
+import org.hospitalqueing.dao.CounterDAO;
+import org.hospitalqueing.dao.DepartmentDAO;
+import org.hospitalqueing.dao.QueueEntryDAO;
+import org.hospitalqueing.dao.QueueEventDAO;
+import org.hospitalqueing.dao.ServiceDAO;
+import org.hospitalqueing.dao.StaffDAO;
+import org.hospitalqueing.model.QueueEntry;
+import org.hospitalqueing.model.QueueStatus;
+import org.hospitalqueing.model.Staff;
+import org.hospitalqueing.model.User;
+import org.hospitalqueing.service.QueueManagementService;
 
 public class StaffDashboardPanel extends JPanel {
 
@@ -20,6 +34,12 @@ public class StaffDashboardPanel extends JPanel {
     private JPanel staffContentPanel;
     private StaffPatientQueuePanel staffPatientPanel;
     private MainFrame parentFrame;
+
+    // Live stat count labels, updated each time the home screen is shown (the panel is
+    // constructed before login, so buildHomeScreen() may not yet know the logged-in staff).
+    private JLabel todayPatientsLabel;
+    private JLabel inQueueLabel;
+    private JLabel completedLabel;
 
     public StaffDashboardPanel(MainFrame parentFrame) {
         this.parentFrame = parentFrame;
@@ -86,6 +106,16 @@ public class StaffDashboardPanel extends JPanel {
         staffContentPanel.add(walkInScreen, "STAFF_WALKIN");
         staffContentPanel.add(patientScreen, "STAFF_PATIENT");
 
+        // Re-compute the live stat cards whenever the home screen becomes visible, so the
+        // numbers always reflect the currently logged-in staff and the latest queue state
+        // (the panel is constructed before login, and queue state changes after login).
+        homeScreen.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                refreshHomeStats();
+            }
+        });
+
         // Re-query the live queue whenever the patient screen becomes visible, so the operator
         // always sees current data no matter how they navigated here (nav link, quick-action card,
         // or a future route). componentShown() fires when this panel transitions to showing,
@@ -101,7 +131,7 @@ public class StaffDashboardPanel extends JPanel {
 
         // --- 3. ACTIONS ---
         homeNav.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) { staffCardLayout.show(staffContentPanel, "STAFF_HOME"); }
+            public void mouseClicked(MouseEvent e) { showStaffHome(); }
         });
         walkInNav.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) { staffCardLayout.show(staffContentPanel, "STAFF_WALKIN"); }
@@ -123,6 +153,27 @@ public class StaffDashboardPanel extends JPanel {
         staffCardLayout.show(staffContentPanel, "STAFF_PATIENT");
         if (staffPatientPanel != null) {
             staffPatientPanel.refresh();
+        }
+    }
+
+    /** Shows the home screen and re-computes the live stat cards. */
+    private void showStaffHome() {
+        staffCardLayout.show(staffContentPanel, "STAFF_HOME");
+        refreshHomeStats();
+    }
+
+    /** Re-computes and updates the three live stat cards for the currently logged-in staff. */
+    private void refreshHomeStats() {
+        org.hospitalqueing.model.User staffUser =
+                parentFrame != null ? parentFrame.getLoggedInUser() : null;
+        if (todayPatientsLabel != null) {
+            todayPatientsLabel.setText(String.valueOf(countSafe(() -> countToday(staffUser))));
+        }
+        if (inQueueLabel != null) {
+            inQueueLabel.setText(String.valueOf(countSafe(() -> countInQueue(staffUser))));
+        }
+        if (completedLabel != null) {
+            completedLabel.setText(String.valueOf(countSafe(() -> countCompleted(staffUser))));
         }
     }
 
@@ -159,13 +210,22 @@ public class StaffDashboardPanel extends JPanel {
         greetingPanel.add(docRole);
         panel.add(greetingPanel);
 
-        // B. Summary Cards Section
+        // B. Summary Cards Section — live counts for the logged-in staff member's department
+        // (falls back to totals across departments when the staff row has no department).
         JPanel summaryContainer = new JPanel(new MigLayout("insets 0, gap 20", "[grow, fill][grow, fill][grow, fill]", "[]"));
         summaryContainer.setOpaque(false);
 
-        summaryContainer.add(createStatCard("Today's Patients", "48", "👥", new Color(230, 244, 255), PRIMARY_BLUE));
-        summaryContainer.add(createStatCard("In Queue", "12", "🕒", new Color(255, 244, 229), new Color(230, 126, 34)));
-        summaryContainer.add(createStatCard("Completed", "36", "✅", new Color(235, 249, 241), new Color(46, 204, 113)));
+        int todayPatients = countSafe(() -> countToday(staffUser));
+        int inQueue = countSafe(() -> countInQueue(staffUser));
+        int completed = countSafe(() -> countCompleted(staffUser));
+
+        todayPatientsLabel = createCountLabel(String.valueOf(todayPatients));
+        inQueueLabel = createCountLabel(String.valueOf(inQueue));
+        completedLabel = createCountLabel(String.valueOf(completed));
+
+        summaryContainer.add(createStatCard("Today's Patients", todayPatientsLabel, "👥", new Color(230, 244, 255), PRIMARY_BLUE));
+        summaryContainer.add(createStatCard("In Queue", inQueueLabel, "🕒", new Color(255, 244, 229), new Color(230, 126, 34)));
+        summaryContainer.add(createStatCard("Completed", completedLabel, "✅", new Color(235, 249, 241), new Color(46, 204, 113)));
 
         panel.add(summaryContainer);
 
@@ -188,6 +248,75 @@ public class StaffDashboardPanel extends JPanel {
         return panel;
     }
 
+    // --- LIVE STATS HELPERS (scoped to the staff member's department; all-dept totals as fallback) ---
+
+    /** The logged-in staff row's department, or null when there is no staff row / no department. */
+    private Integer staffDepartmentId(User staffUser) {
+        if (staffUser == null) {
+            return null;
+        }
+        Staff staff = new StaffDAO().findByUser(staffUser.getUserId());
+        return (staff != null) ? staff.getDepartmentId() : null;
+    }
+
+    /** Today's date string, in the same shape queue_entries.queue_date is stored (ISO yyyy-MM-dd). */
+    private static String today() {
+        return LocalDate.now().toString();
+    }
+
+    /** queue_entries rows for today: the staff dept only, or all depts when the staff has none. */
+    private List<QueueEntry> todaysEntries(User staffUser) {
+        Integer deptId = staffDepartmentId(staffUser);
+        String date = today();
+        return new QueueEntryDAO().findAll().stream()
+            .filter(e -> e.getQueueDate() != null && e.getQueueDate().equals(date))
+            .filter(e -> deptId == null || e.getDepartmentId() == deptId)
+            .toList();
+    }
+
+    /** "Today's Patients": every queue entry created today in the staff's department. */
+    private int countToday(User staffUser) {
+        return todaysEntries(staffUser).size();
+    }
+
+    /** "Completed": today's entries whose status is terminal (Discharged / Completed / No Show). */
+    private int countCompleted(User staffUser) {
+        int count = 0;
+        for (QueueEntry e : todaysEntries(staffUser)) {
+            if (QueueStatus.isTerminal(e.getStatus())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** "In Queue": size of the live active queue. The service is per-department, so a staff
+     *  member without a department is shown the all-department active total instead. */
+    private int countInQueue(User staffUser) {
+        QueueEntryDAO queueEntryDAO = new QueueEntryDAO();
+        QueueManagementService qms =
+            new QueueManagementService(
+                queueEntryDAO,
+                new QueueEventDAO(),
+                new ServiceDAO(),
+                new DepartmentDAO(),
+                new CounterDAO());
+        Integer deptId = staffDepartmentId(staffUser);
+        if (deptId != null) {
+            return qms.getActiveQueue(deptId).size();
+        }
+        // Fallback: active entries across departments.
+        return (int) queueEntryDAO.findAll().stream().filter(e -> QueueStatus.isActive(e.getStatus())).count();
+    }
+
+    private int countSafe(java.util.function.IntSupplier supplier) {
+        try {
+            return supplier.getAsInt();
+        } catch (Exception ex) {
+            return 0;
+        }
+    }
+
     // --- UI HELPERS ---
     private JLabel createHeaderLink(String text, boolean isActive) {
         JLabel label = new JLabel(text);
@@ -202,7 +331,7 @@ public class StaffDashboardPanel extends JPanel {
         return label;
     }
 
-    private JPanel createStatCard(String title, String count, String icon, Color bgColor, Color iconColor) {
+    private JPanel createStatCard(String title, JLabel countLbl, String icon, Color bgColor, Color iconColor) {
         JPanel card = new JPanel(new MigLayout("insets 20, fillx", "[left]push[right]", "[]10[]"));
         card.setBackground(WHITE);
         card.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
@@ -215,15 +344,18 @@ public class StaffDashboardPanel extends JPanel {
         iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
         iconLbl.setForeground(iconColor);
 
-        JLabel countLbl = new JLabel(count);
-        countLbl.setFont(new Font("SansSerif", Font.BOLD, 36));
-        countLbl.setForeground(TEXT_DARK);
-
         card.add(titleLbl, "cell 0 0");
         card.add(iconLbl, "cell 1 0");
         card.add(countLbl, "cell 0 1, span 2");
 
         return card;
+    }
+
+    private JLabel createCountLabel(String count) {
+        JLabel countLbl = new JLabel(count);
+        countLbl.setFont(new Font("SansSerif", Font.BOLD, 36));
+        countLbl.setForeground(TEXT_DARK);
+        return countLbl;
     }
 
     // UPDATED: Now accepts a targetScreen parameter for real navigation
