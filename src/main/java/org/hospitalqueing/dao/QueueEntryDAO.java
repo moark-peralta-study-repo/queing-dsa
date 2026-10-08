@@ -170,6 +170,36 @@ public class QueueEntryDAO {
     return queueEntries;
   }
 
+  public List<QueueEntry> findByPatient(int patientId) {
+
+    String sql =
+        """
+          SELECT *
+          FROM queue_entries
+          WHERE patient_id = ?
+        """;
+
+    List<QueueEntry> queueEntries = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, patientId);
+
+      try (ResultSet resultSet = statement.executeQuery()) {
+
+        while (resultSet.next()) {
+          queueEntries.add(mapQueueEntry(resultSet));
+        }
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return queueEntries;
+  }
+
   public void update(QueueEntry queueEntry) {
 
     String sql =
