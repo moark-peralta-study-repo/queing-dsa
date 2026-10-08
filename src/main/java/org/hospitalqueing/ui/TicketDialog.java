@@ -28,7 +28,7 @@ public final class TicketDialog {
    * @param parent      component the dialog is centered over (owner)
    * @param intro       lead-in line, e.g. "You have successfully joined the queue!"
    * @param department  department name
-   * @param queueNumber the assigned queue number (shown as "#N")
+   * @param queueNumber the assigned queue number, shown as a department-prefixed ticket (e.g. "A-023")
    * @param qrToken     the ticket token — encoded to a QR image and also shown as text
    * @param extra       optional extra detail lines (joined with newlines); may be null
    */
@@ -47,7 +47,7 @@ public final class TicketDialog {
     introLbl.setFont(new Font("SansSerif", Font.PLAIN, 14));
     introLbl.setForeground(new Color(113, 128, 150));
 
-    JLabel numLbl = new JLabel("#" + queueNumber);
+    JLabel numLbl = new JLabel(UiData.queueLabel(department, queueNumber));
     numLbl.setFont(new Font("SansSerif", Font.BOLD, 60));
     numLbl.setForeground(new Color(21, 101, 192));
 

@@ -281,7 +281,7 @@ public class StaffPatientQueuePanel extends JPanel {
                 List<QueueEntry> active = qms.getActiveQueue(d.getDepartmentId());
                 for (QueueEntry qe : active) {
                     Object[] row = new Object[] {
-                            "#" + qe.getQueueNumber(),
+                            UiData.queueLabel(d.getDepartmentName(), qe.getQueueNumber()),
                             d.getDepartmentName(),
                             UiData.patientName(qe.getPatientId()),
                             formatJoinedAt(qe.getJoinedAt()),
