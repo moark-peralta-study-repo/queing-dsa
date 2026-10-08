@@ -136,6 +136,32 @@ public final class UiData {
     return d == null ? null : d.getDepartmentName();
   }
 
+  /**
+   * Letter prefix for a department's queue numbers (first alphabetic character of the department
+   * name, upper-cased, else "Q"). This is what turns a bare "#23" into the "A-023" ticket format
+   * shown on the waiting-room display — the number itself is stored per-department and only the
+   * letter is a display concern.
+   */
+  public static String queueLetter(String departmentName) {
+    if (departmentName != null) {
+      for (char c : departmentName.toCharArray()) {
+        if (Character.isLetter(c)) {
+          return String.valueOf(Character.toUpperCase(c));
+        }
+      }
+    }
+    return "Q";
+  }
+
+  /**
+   * The ticket label a patient/operator should see: {@code <letter>-<number>} (e.g. "A-023"),
+   * zero-padded to 3 digits. Centralised so every display (ticket dialog, staff queue table) is
+   * consistent instead of each re-formatting the number.
+   */
+  public static String queueLabel(String departmentName, int queueNumber) {
+    return queueLetter(departmentName) + "-" + String.format("%03d", queueNumber);
+  }
+
   /** Department name derived from a service id (for display), or null. */
   public static String departmentNameForService(int serviceId) {
     Service s = new UiData().serviceDAO.findById(serviceId);
@@ -280,6 +306,12 @@ public final class UiData {
     }
     String n = name.toUpperCase();
     return n.contains("STAFF") || n.contains("ADMIN");
+  }
+
+  /** True when the user's role is specifically an admin (the management dashboard gate). */
+  public static boolean isAdmin(User user) {
+    String name = roleNameForUser(user);
+    return name != null && name.toUpperCase().contains("ADMIN");
   }
 
   // --- internals ---

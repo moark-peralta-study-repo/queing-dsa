@@ -182,13 +182,13 @@ public class PatientQueuePanel extends JPanel {
 
             QueueEntry saved = qms.joinQueue(entry);
 
-            JOptionPane.showMessageDialog(this,
-                    "You have successfully joined the queue!\n\n" +
-                    "Department: " + department + "\n" +
-                    "Your Queue Number: #" + saved.getQueueNumber() + "\n" +
-                    "Ticket Token: " + saved.getQrToken() + "\n\n" +
-                    "Please wait for your number to be called.",
-                    "Ticket Generated", JOptionPane.INFORMATION_MESSAGE);
+            // Show the real ticket: scannable QR of the token, not a plain string.
+            TicketDialog.show(this,
+                    "You have successfully joined the queue!",
+                    department,
+                    saved.getQueueNumber(),
+                    saved.getQrToken(),
+                    "Please wait for your number to be called.");
 
             departmentCombo.setSelectedIndex(0);
             notesArea.setText("");
