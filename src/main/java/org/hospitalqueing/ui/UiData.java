@@ -305,13 +305,27 @@ public final class UiData {
       return false;
     }
     String n = name.toUpperCase();
-    return n.contains("STAFF") || n.contains("ADMIN");
+    return (n.contains("STAFF") || n.contains("ADMIN")) && !n.contains("DOCTOR");
+  }
+
+  /** True when the user's role is specifically a doctor (the doctor-dashboard gate). */
+  public static boolean isDoctor(User user) {
+    String name = roleNameForUser(user);
+    return name != null && name.toUpperCase().contains("DOCTOR");
   }
 
   /** True when the user's role is specifically an admin (the management dashboard gate). */
   public static boolean isAdmin(User user) {
     String name = roleNameForUser(user);
     return name != null && name.toUpperCase().contains("ADMIN");
+  }
+
+  /** The doctor record linked to a login account (T1), or null when the user isn't a doctor. */
+  public static Doctor doctorForUser(User user) {
+    if (user == null || user.getUserId() <= 0) {
+      return null;
+    }
+    return new DoctorDAO().findByUser(user.getUserId());
   }
 
   // --- internals ---

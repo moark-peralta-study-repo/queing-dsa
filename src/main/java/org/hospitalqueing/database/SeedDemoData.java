@@ -27,11 +27,13 @@ import org.hospitalqueing.model.Staff;
  * Idempotent demo seed so the system works out of the box:
  *
  * <ul>
- *   <li>Roles: PATIENT, STAFF, DEPARTMENT_STAFF, ADMIN</li>
+ *   <li>Roles: PATIENT, STAFF, DEPARTMENT_STAFF, ADMIN, DOCTOR</li>
  *   <li>Users: {@code patient} / {@code patient} (PATIENT),
  *       {@code staff} / {@code staff} (STAFF),
- *       {@code admin} / {@code admin} (ADMIN) — all weak on purpose, it's a demo</li>
- *   <li>One patient, four departments (each with two services + two counters), one staff record</li>
+ *       {@code admin} / {@code admin} (ADMIN), and one per seeded doctor
+ *       ({@code dr.<lastname>} / {@code dr.<lastname>}, DOCTOR) — all weak on purpose, it's a demo</li>
+ *   <li>One patient, four departments (each with two services + two counters + one doctor),
+ *       one staff record; every doctor is linked to a login account (T1)</li>
  * </ul>
  *
  * <p>Only inserts when the relevant table is still empty, so re-running the app never duplicates
@@ -61,6 +63,10 @@ public final class SeedDemoData {
       roleDAO.save(new Role(0, "STAFF"));
       roleDAO.save(new Role(0, "DEPARTMENT_STAFF"));
       roleDAO.save(new Role(0, "ADMIN"));
+      roleDAO.save(new Role(0, "DOCTOR"));
+    } else if (roleDAO.findByName("DOCTOR") == null) {
+      // Existing DBs (seeded before the DOCTOR role) get it added here so doctors can log in.
+      roleDAO.save(new Role(0, "DOCTOR"));
     }
 
     if (empty("patients")) {
@@ -110,6 +116,33 @@ public final class SeedDemoData {
     seedDoctorIfMissing("Pediatrics", "Ana", "Lim");
     seedDoctorIfMissing("Orthopedics", "John", "Smith");
 
+    // T1: give each seeded doctor a login account (DOCTOR role) so the doctor dashboard can be
+    // reached. Idempotent — doctors that already have a user are skipped. Logins: dr.<lastname> /
+    // dr.<lastname>.
+    int doctorLoginsCreated = 0;
+    for (Doctor doctor : doctorDAO.findAll()) {
+      if (doctor.getUserId() > 0 && doctorDAO.findByUser(doctor.getUserId()) != null) {
+        continue;
+      }
+      String username = "dr." + doctor.getLastName().toLowerCase().replaceAll("[^a-z0-9]", "");
+      if (userDAO.findByUsername(username) != null) {
+        continue;
+      }
+      User doctorUser = new User();
+      doctorUser.setUsername(username);
+      doctorUser.setPasswordHash(new AuthenticationService(userDAO).hashPassword(username));
+      doctorUser.setRoleId(roleId("DOCTOR"));
+      doctorUser.setActive(true);
+      userDAO.save(doctorUser);
+
+      doctor.setUserId(doctorUser.getUserId());
+      doctorDAO.update(doctor);
+      doctorLoginsCreated++;
+    }
+    if (doctorLoginsCreated > 0) {
+      System.out.println("Seeded " + doctorLoginsCreated + " doctor login(s) (DOCTOR role)");
+    }
+
     if (empty("staff")) {
       Department firstDept = departmentDAO.findAll().get(0);
       Staff staff = new Staff();
@@ -119,7 +152,7 @@ public final class SeedDemoData {
       staff.setDepartmentId(firstDept.getDepartmentId());
       staffDAO.save(staff);
 
-      System.out.println("Seeded demo data. Logins: patient/patient, staff/staff, admin/admin");
+      System.out.println("Seeded demo data. Logins: patient/patient, staff/staff, admin/admin, dr.santos/dr.santos (+ one per seeded doctor)");
     }
   }
 

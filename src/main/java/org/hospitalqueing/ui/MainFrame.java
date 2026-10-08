@@ -20,6 +20,7 @@ public class MainFrame extends JFrame {
     private AppointmentPanel appointmentCard;
     private PatientQueuePanel patientQueueCard; // Elevated to class level
     private AdminDashboardPanel adminDashboardCard;
+    private DoctorDashboardPanel doctorDashboardCard;
     private JPanel topContainer; 
     private org.hospitalqueing.model.User loggedInUser;
 
@@ -84,6 +85,7 @@ public class MainFrame extends JFrame {
         AppointmentHistoryPanel historyCard = new AppointmentHistoryPanel(this);
         StaffDashboardPanel staffDashboardCard = new StaffDashboardPanel(this);
         adminDashboardCard = new AdminDashboardPanel(this);
+        doctorDashboardCard = new DoctorDashboardPanel(this);
         
         patientQueueCard = new PatientQueuePanel(this); // Now saves to class variable
 
@@ -96,6 +98,7 @@ public class MainFrame extends JFrame {
         mainContentPanel.add(historyCard, "HISTORY_PAGE");
         mainContentPanel.add(staffDashboardCard, "STAFF_DASHBOARD");
         mainContentPanel.add(adminDashboardCard, "ADMIN_DASHBOARD");
+        mainContentPanel.add(doctorDashboardCard, "DOCTOR_DASHBOARD");
         mainContentPanel.add(patientQueueCard, "QUEUE_STATUS_PAGE");
 
         add(mainContentPanel, BorderLayout.CENTER);
@@ -243,10 +246,15 @@ public class MainFrame extends JFrame {
     public void setLoggedInUser(org.hospitalqueing.model.User user) {
         this.loggedInUser = user;
         // Land on the right dashboard for the role: admins get the management dashboard,
-        // other staff get the daily-operations dashboard.
+        // doctors get the per-doctor dashboard, other staff get the daily-operations dashboard.
         if (user != null) {
             if (UiData.isAdmin(user)) {
                 showScreen("ADMIN_DASHBOARD");
+            } else if (UiData.isDoctor(user)) {
+                if (doctorDashboardCard != null) {
+                    doctorDashboardCard.reload();
+                }
+                showScreen("DOCTOR_DASHBOARD");
             } else if (UiData.isStaff(user)) {
                 showScreen("STAFF_DASHBOARD");
             } else {

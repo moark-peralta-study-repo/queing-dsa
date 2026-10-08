@@ -2,6 +2,7 @@ package org.hospitalqueing.database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -107,6 +108,8 @@ public class DatabaseConnection {
         CREATE TABLE IF NOT EXISTS doctors (
             doctor_id INTEGER PRIMARY KEY,
 
+            user_id INTEGER,
+
             department_id INTEGER NOT NULL,
 
             first_name TEXT NOT NULL,
@@ -114,6 +117,9 @@ public class DatabaseConnection {
             license_number TEXT,
 
             is_active INTEGER NOT NULL DEFAULT 1,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users(user_id),
 
             FOREIGN KEY (department_id)
                 REFERENCES departments(department_id)
@@ -371,6 +377,10 @@ public class DatabaseConnection {
       // No-op when already on the new vocabulary.
       migrateQueueStatusVocabulary(statement);
 
+      // Doctors gained a login account (DOCTOR role, T1): add the user_id column to
+      // existing DBs. No-op when the column already exists.
+      migrateDoctorsUserIdColumn(statement);
+
       System.out.println("Database initialized successfully.");
 
     } catch (SQLException e) {
@@ -409,6 +419,26 @@ public class DatabaseConnection {
     for (String[] m : migrations) {
       String sql = "UPDATE queue_entries SET status = '" + m[1] + "' WHERE status = '" + m[0] + "'";
       statement.executeUpdate(sql);
+    }
+  }
+
+  /**
+   * Adds the {@code doctors.user_id} column on existing databases. Doctors only became log-in
+   * accounts in T1 (DOCTOR role); pre-existing DBs are missing the column, so we ALTER TABLE
+   * when it isn't there yet. Safe to run on every startup (a no-op once the column exists).
+   */
+  private static void migrateDoctorsUserIdColumn(Statement statement) throws SQLException {
+    try (ResultSet rs = statement.executeQuery("PRAGMA table_info(doctors)")) {
+      boolean hasUserId = false;
+      while (rs.next()) {
+        if ("user_id".equals(rs.getString("name"))) {
+          hasUserId = true;
+        }
+      }
+      if (!hasUserId) {
+        statement.executeUpdate("ALTER TABLE doctors ADD COLUMN user_id INTEGER");
+        System.out.println("Migrated doctors table: added user_id column (DOCTOR role support)");
+      }
     }
   }
 }
