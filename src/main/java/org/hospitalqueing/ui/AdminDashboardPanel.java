@@ -16,7 +16,7 @@ import org.hospitalqueing.model.Appointment;
 
 /**
  * The admin dashboard: same shell as the staff dashboard (dark header + content cards) but with
- * admin-only sections — Departments, Services, Doctors, Staff — plus live facility stats.
+ * admin-only sections — Departments, Services, Doctors, Staff, Reports — plus live facility stats.
  * Regular staff keep the StaffDashboardPanel; login routes by role.
  */
 public class AdminDashboardPanel extends JPanel {
@@ -36,6 +36,7 @@ public class AdminDashboardPanel extends JPanel {
   private final AdminServicesPanel servicesPanel;
   private final AdminDoctorsPanel doctorsPanel;
   private final AdminStaffPanel staffPanel;
+  private final AdminReportsPanel reportsPanel;
   private JPanel homeScreen;
 
   public AdminDashboardPanel(MainFrame parentFrame) {
@@ -44,7 +45,7 @@ public class AdminDashboardPanel extends JPanel {
     setBackground(BACKGROUND_LIGHT);
 
     // --- 1. ADMIN HEADER (Dark Blue Nav) ---
-    JPanel headerPanel = new JPanel(new MigLayout("insets 15 30 15 30, aligny center", "[left]push[center]25[center]25[center]25[center]push[right]", "[center]"));
+    JPanel headerPanel = new JPanel(new MigLayout("insets 15 30 15 30, aligny center", "[left]push[center]25[center]25[center]25[center]25[center]push[right]", "[center]"));
     headerPanel.setBackground(HEADER_DARK_BLUE);
     headerPanel.add(new JLabel(" "), "cell 0 0");
 
@@ -53,12 +54,14 @@ public class AdminDashboardPanel extends JPanel {
     JLabel serviceNav = createHeaderLink("SERVICES", false);
     JLabel doctorNav = createHeaderLink("DOCTORS", false);
     JLabel staffNav = createHeaderLink("STAFF", false);
+    JLabel reportsNav = createHeaderLink("REPORTS", false);
 
     headerPanel.add(homeNav, "cell 1 0");
     headerPanel.add(deptNav, "cell 2 0");
     headerPanel.add(serviceNav, "cell 3 0");
     headerPanel.add(doctorNav, "cell 4 0");
     headerPanel.add(staffNav, "cell 5 0");
+    headerPanel.add(reportsNav, "cell 6 0");
 
     JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
     rightControls.setOpaque(false);
@@ -69,7 +72,7 @@ public class AdminDashboardPanel extends JPanel {
     logoutBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
     logoutBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     rightControls.add(logoutBtn);
-    headerPanel.add(rightControls, "cell 6 0");
+    headerPanel.add(rightControls, "cell 7 0");
 
     add(headerPanel, BorderLayout.NORTH);
 
@@ -81,6 +84,7 @@ public class AdminDashboardPanel extends JPanel {
     servicesPanel = new AdminServicesPanel(parentFrame);
     doctorsPanel = new AdminDoctorsPanel(parentFrame);
     staffPanel = new AdminStaffPanel(parentFrame);
+    reportsPanel = new AdminReportsPanel(parentFrame);
 
     homeScreen = buildHomeScreen();
     adminContentPanel.add(homeScreen, "ADMIN_HOME");
@@ -88,6 +92,7 @@ public class AdminDashboardPanel extends JPanel {
     adminContentPanel.add(servicesPanel, "ADMIN_SERVICES");
     adminContentPanel.add(doctorsPanel, "ADMIN_DOCTORS");
     adminContentPanel.add(staffPanel, "ADMIN_STAFF");
+    adminContentPanel.add(reportsPanel, "ADMIN_REPORTS");
 
     add(adminContentPanel, BorderLayout.CENTER);
 
@@ -97,6 +102,7 @@ public class AdminDashboardPanel extends JPanel {
     serviceNav.addMouseListener(onClick(() -> showAdmin("ADMIN_SERVICES")));
     doctorNav.addMouseListener(onClick(() -> showAdmin("ADMIN_DOCTORS")));
     staffNav.addMouseListener(onClick(() -> showAdmin("ADMIN_STAFF")));
+    reportsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_REPORTS")));
 
     logoutBtn.addActionListener(e -> {
       int choice = JOptionPane.showConfirmDialog(this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
@@ -115,6 +121,9 @@ public class AdminDashboardPanel extends JPanel {
       revalidate();
       repaint();
     }
+    if ("ADMIN_REPORTS".equals(card) && reportsPanel != null) {
+      reportsPanel.refresh();
+    }
     adminCardLayout.show(adminContentPanel, card);
   }
 
@@ -124,6 +133,7 @@ public class AdminDashboardPanel extends JPanel {
     servicesPanel.refresh();
     doctorsPanel.refresh();
     staffPanel.refresh();
+    reportsPanel.refresh();
   }
 
   private java.awt.event.MouseListener onClick(Runnable action) {
@@ -177,12 +187,13 @@ public class AdminDashboardPanel extends JPanel {
     actionsLabel.setForeground(TEXT_DARK);
     panel.add(actionsLabel, "gaptop 10");
 
-    JPanel actionsContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
+    JPanel actionsContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
     actionsContainer.setOpaque(false);
     actionsContainer.add(createActionCard("Departments", "Add or remove hospital units", "🏥", "ADMIN_DEPARTMENTS"));
     actionsContainer.add(createActionCard("Services", "What patients can book", "🩻", "ADMIN_SERVICES"));
     actionsContainer.add(createActionCard("Doctors", "Who is on roster", "🩺", "ADMIN_DOCTORS"));
     actionsContainer.add(createActionCard("Staff", "Logins & roles", "🧑‍⚕️", "ADMIN_STAFF"));
+    actionsContainer.add(createActionCard("Reports", "Activity & analytics", "📊", "ADMIN_REPORTS"));
     panel.add(actionsContainer);
 
     return panel;
