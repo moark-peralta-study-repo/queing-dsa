@@ -17,6 +17,7 @@ public class LoginPanel extends JPanel {
     private JTextField usernameField;
     private JPasswordField passwordField;
     private JButton loginBtn;
+    private JCheckBox rememberMe;
     private JLabel registerLink;
     private JLabel backBtn;
 
@@ -36,7 +37,7 @@ public class LoginPanel extends JPanel {
         JLabel logoLabel = new JLabel("✚");
         logoLabel.setForeground(PRIMARY_BLUE);
         logoLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
-        
+
         JLabel titleLabel = new JLabel("HOSPITAL");
         titleLabel.setForeground(PRIMARY_BLUE);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -70,9 +71,16 @@ public class LoginPanel extends JPanel {
 
         usernameField = new JTextField();
         usernameField.putClientProperty("JTextField.placeholderText", "Username");
-        
+
         passwordField = new JPasswordField();
         passwordField.putClientProperty("JTextField.placeholderText", "Password");
+
+        // T7: restore a remembered username (if any) up front. readUsername() returns null for a
+        // missing, empty, or corrupt file, in which case we simply do not prefill.
+        String remembered = RememberMeStore.readUsername();
+        if (remembered != null) {
+            usernameField.setText(remembered);
+        }
 
         loginBtn = new JButton("Log In");
         loginBtn.setPreferredSize(new Dimension(300, 40));
@@ -82,6 +90,18 @@ public class LoginPanel extends JPanel {
         loginBtn.setFocusPainted(false);
         loginBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        rememberMe = new JCheckBox("Remember me");
+        rememberMe.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        rememberMe.setForeground(TEXT_DARK);
+        rememberMe.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        // "Remember me" sits on the same row, immediately to the left of the Log In button
+        // (centered as a group so it reads as one control bar next to the fields above).
+        JPanel loginRowPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        loginRowPanel.setBackground(WHITE);
+        loginRowPanel.add(rememberMe);
+        loginRowPanel.add(loginBtn);
+
         registerLink = new JLabel("<html><u>Don't have an account? Register</u></html>");
         registerLink.setForeground(PRIMARY_BLUE);
         registerLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -90,7 +110,7 @@ public class LoginPanel extends JPanel {
         card.add(subtitle, "gapbottom 10");
         card.add(usernameField, fieldConstraints);
         card.add(passwordField, fieldConstraints);
-        card.add(loginBtn, "gaptop 10");
+        card.add(loginRowPanel, "gaptop 10");
         card.add(registerLink);
 
         centerWrapper.add(card);
@@ -127,6 +147,9 @@ public class LoginPanel extends JPanel {
                 User loggedInUser = authService.login(username, password);
 
                 if (loggedInUser != null) {
+                    // T7: persist (or forget) the remembered username. Only the username is
+                    // stored -- never the password and never its hash.
+                    RememberMeStore.writeUsername(rememberMe.isSelected() ? loggedInUser.getUsername() : null);
                     // setLoggedInUser stores the user and routes to the role's dashboard.
                     parentFrame.setLoggedInUser(loggedInUser);
                     clearFields();
@@ -142,7 +165,10 @@ public class LoginPanel extends JPanel {
     }
 
     public void clearFields() {
-        usernameField.setText("");
         passwordField.setText("");
+        // Restore the remembered username rather than wiping it, so the T7 prefill survives
+        // navigation/logout (MainFrame.showScreen(LOGIN_PAGE) and triggerLogout both call this).
+        String remembered = RememberMeStore.readUsername();
+        usernameField.setText(remembered != null ? remembered : "");
     }
 }
