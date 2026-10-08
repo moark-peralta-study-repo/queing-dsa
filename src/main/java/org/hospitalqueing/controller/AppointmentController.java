@@ -36,6 +36,10 @@ public class AppointmentController {
     appointmentService.cancelAppointment(appointmentId);
   }
 
+  public void confirmAppointment(int appointmentId) {
+    appointmentService.confirmAppointment(appointmentId);
+  }
+
   public void deleteAppointment(int appointmentId) {
     appointmentService.deleteAppointment(appointmentId);
   }

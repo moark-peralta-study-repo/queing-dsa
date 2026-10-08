@@ -23,12 +23,18 @@ import org.hospitalqueing.model.QueueStatus;
 import org.hospitalqueing.service.QueueManagementService;
 
 /**
- * Doctor dashboard (T1): what a logged-in doctor sees. The whole department's live queue and
- * today's appointments — not just the doctor's own — because a department's patients are shared
- * across its doctors. Stats are queried live (the admin dashboard's pattern), not hard-coded.
+ * Doctor dashboard: what a logged-in doctor sees. Dark header nav (DASHBOARD | APPOINTMENTS |
+ * HISTORY, admin-dashboard style) over an internal CardLayout of sections:
  *
- * <p>Scope: doctor login + routing + the per-doctor home. Appointment confirmation and the
- * History/Appointments quick-action tabs are T3 (see TODO.md).
+ * <ul>
+ *   <li>HOME (T1) — the department's live stats, queue, and today's appointments.</li>
+ *   <li>APPOINTMENTS (T2, {@link DoctorAppointmentsPanel}) — the department's open
+ *       SCHEDULED/CONFIRMED bookings, each SCHEDULED row confirmable.</li>
+ *   <li>HISTORY (T3, {@link DoctorHistoryPanel}) — the department's closed bookings, read-only.</li>
+ * </ul>
+ *
+ * <p>Everything is department-wide on purpose: a department's patients and bookings are shared
+ * across its doctors. MainFrame routes doctor logins here (DOCTOR_DASHBOARD card).
  */
 public class DoctorDashboardPanel extends JPanel {
 
@@ -49,34 +55,123 @@ public class DoctorDashboardPanel extends JPanel {
   private final DefaultTableModel appointmentTableModel =
       new DefaultTableModel(new Object[]{"Time", "Patient", "Service", "Status"}, 0);
 
-  // Stat value labels — populated fresh on every reload.
-  private JLabel todayPatientsVal;
-  private JLabel inQueueVal;
-  private JLabel completedVal;
+  private final CardLayout doctorCardLayout = new CardLayout();
+  private final JPanel doctorContentPanel;
 
-  /** The live content; rebuilt on every login so the greeting + data reflect the current doctor. */
-  private final JPanel contentHost = new JPanel(new BorderLayout());
+  private final DoctorAppointmentsPanel appointmentsPanel;
+  private final DoctorHistoryPanel historyPanel;
   private JPanel homeScreen;
+
+  /** The live nav links; DASHBOARD is active by default and re-lit on each switch. */
+  private JLabel homeNav;
+  private JLabel appointmentsNav;
+  private JLabel historyNav;
 
   public DoctorDashboardPanel(MainFrame parentFrame) {
     this.parentFrame = parentFrame;
     setLayout(new BorderLayout());
     setBackground(BACKGROUND_LIGHT);
-    contentHost.setBackground(BACKGROUND_LIGHT);
+
+    // --- 1. DOCTOR HEADER (Dark Blue Nav) ---
+    JPanel headerPanel = new JPanel(new MigLayout("insets 15 30 15 30, aligny center", "[left]push[center]25[center]25[center]push[right]", "[center]"));
+    headerPanel.setBackground(HEADER_DARK_BLUE);
+    headerPanel.add(new JLabel(" "), "cell 0 0");
+
+    homeNav = createHeaderLink("DASHBOARD", true);
+    appointmentsNav = createHeaderLink("APPOINTMENTS", false);
+    historyNav = createHeaderLink("HISTORY", false);
+
+    headerPanel.add(homeNav, "cell 1 0");
+    headerPanel.add(appointmentsNav, "cell 2 0");
+    headerPanel.add(historyNav, "cell 3 0");
+
+    JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+    rightControls.setOpaque(false);
+    JButton logoutBtn = new JButton("Logout");
+    logoutBtn.setBackground(WHITE);
+    logoutBtn.setForeground(HEADER_DARK_BLUE);
+    logoutBtn.setFocusPainted(false);
+    logoutBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+    logoutBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    rightControls.add(logoutBtn);
+    headerPanel.add(rightControls, "cell 4 0");
+
+    add(headerPanel, BorderLayout.NORTH);
+
+    // --- 2. CONTENT (internal CardLayout) ---
+    doctorContentPanel = new JPanel(doctorCardLayout);
+    doctorContentPanel.setBackground(BACKGROUND_LIGHT);
+
+    appointmentsPanel = new DoctorAppointmentsPanel(parentFrame);
+    historyPanel = new DoctorHistoryPanel(parentFrame);
+
     homeScreen = buildHomeScreen();
-    contentHost.add(homeScreen, BorderLayout.CENTER);
-    add(contentHost, BorderLayout.CENTER);
+    doctorContentPanel.add(homeScreen, "DOCTOR_HOME");
+    doctorContentPanel.add(appointmentsPanel, "DOCTOR_APPOINTMENTS");
+    doctorContentPanel.add(historyPanel, "DOCTOR_HISTORY");
+
+    add(doctorContentPanel, BorderLayout.CENTER);
+
+    // --- 3. NAV WIRING ---
+    homeNav.addMouseListener(onClick(() -> showDoctor("DOCTOR_HOME")));
+    appointmentsNav.addMouseListener(onClick(() -> showDoctor("DOCTOR_APPOINTMENTS")));
+    historyNav.addMouseListener(onClick(() -> showDoctor("DOCTOR_HISTORY")));
+
+    logoutBtn.addActionListener(e -> {
+      int choice = JOptionPane.showConfirmDialog(this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
+      if (choice == JOptionPane.YES_OPTION) {
+        parentFrame.triggerLogout();
+      }
+    });
   }
 
-  /** Rebuilds the doctor home (greeting + live data) for the currently logged-in user. */
+  /** Switch doctor section (header nav + quick-action cards). The home section rebuilds so its stats stay live. */
+  public void showDoctor(String card) {
+    if ("DOCTOR_HOME".equals(card) && homeScreen != null) {
+      doctorContentPanel.remove(homeScreen);
+      homeScreen = buildHomeScreen();
+      doctorContentPanel.add(homeScreen, "DOCTOR_HOME");
+      revalidate();
+      repaint();
+    }
+    if ("DOCTOR_APPOINTMENTS".equals(card)) {
+      appointmentsPanel.refresh();
+    }
+    if ("DOCTOR_HISTORY".equals(card)) {
+      historyPanel.refresh();
+    }
+    setNavActive(card);
+    doctorCardLayout.show(doctorContentPanel, card);
+  }
+
+  /** Re-activates the nav link for the shown card (hover state otherwise keeps the old color). */
+  private void setNavActive(String card) {
+    homeNav.setForeground("DOCTOR_HOME".equals(card) ? WHITE : new Color(150, 170, 190));
+    appointmentsNav.setForeground("DOCTOR_APPOINTMENTS".equals(card) ? WHITE : new Color(150, 170, 190));
+    historyNav.setForeground("DOCTOR_HISTORY".equals(card) ? WHITE : new Color(150, 170, 190));
+  }
+
+  /** Rebuilds the doctor home (greeting + live data) for the currently logged-in user. Called by MainFrame on login. */
   public void reload() {
-    contentHost.remove(homeScreen);
+    if (homeScreen != null) {
+      doctorContentPanel.remove(homeScreen);
+    }
     homeScreen = buildHomeScreen();
-    contentHost.add(homeScreen, BorderLayout.CENTER);
+    doctorContentPanel.add(homeScreen, "DOCTOR_HOME");
     revalidate();
     repaint();
   }
 
+  private java.awt.event.MouseListener onClick(Runnable action) {
+    return new MouseAdapter() {
+      @Override
+      public void mouseClicked(MouseEvent e) {
+        action.run();
+      }
+    };
+  }
+
+  // --- HOME SCREEN (T1 content, unchanged except the section quick-actions) ---
   private JPanel buildHomeScreen() {
     Doctor doctor = UiData.doctorForUser(parentFrame.getLoggedInUser());
     Department dept = null;
@@ -110,27 +205,39 @@ public class DoctorDashboardPanel extends JPanel {
     greeting.add(g3);
     panel.add(greeting);
 
-    // B. Live facility stats — department-wide, queried.
+    // B. Live department stats.
     int inQueue = doctor != null ? qms.getActiveQueue(doctor.getDepartmentId()).size() : 0;
     int completed = countCompletedToday(doctor != null ? doctor.getDepartmentId() : -1);
     int todayPatients = countActiveToday(doctor != null ? doctor.getDepartmentId() : -1);
 
     JPanel summary = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
     summary.setOpaque(false);
-    summary.add(createStatCard("Today's Patients", todayPatientsVal = new JLabel(String.valueOf(todayPatients)), "👥", new Color(230, 244, 255), PRIMARY_BLUE));
-    summary.add(createStatCard("In Queue", inQueueVal = new JLabel(String.valueOf(inQueue)), "🕒", new Color(255, 244, 229), new Color(230, 126, 34)));
-    summary.add(createStatCard("Completed", completedVal = new JLabel(String.valueOf(completed)), "✅", new Color(235, 249, 241), new Color(46, 204, 113)));
+    summary.add(createStatCard("Today's Patients", String.valueOf(todayPatients), "👥", new Color(230, 244, 255), PRIMARY_BLUE));
+    summary.add(createStatCard("In Queue", String.valueOf(inQueue), "🕒", new Color(255, 244, 229), new Color(230, 126, 34)));
+    summary.add(createStatCard("Completed", String.valueOf(completed), "✅", new Color(235, 249, 241), new Color(46, 204, 113)));
     panel.add(summary);
 
-    // C. Live department queue (department-wide, shared by all doctors in the dept).
+    // C. Department quick actions (T2/T3 sections, admin-dashboard style).
+    JLabel actionsLabel = new JLabel("Appointments");
+    actionsLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+    actionsLabel.setForeground(TEXT_DARK);
+    panel.add(actionsLabel, "gaptop 10");
+
+    JPanel actionsContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill]", "[]"));
+    actionsContainer.setOpaque(false);
+    actionsContainer.add(createActionCard("Open Bookings", "Confirm SCHEDULED appointments for the department", "📅", "DOCTOR_APPOINTMENTS"));
+    actionsContainer.add(createActionCard("History", "Completed, cancelled & no-show bookings (read-only)", "🗂️", "DOCTOR_HISTORY"));
+    panel.add(actionsContainer);
+
+    // D. Live department queue (department-wide, shared by all doctors in the dept).
     JLabel queueLabel = new JLabel("Live Queue — " + (deptName + " (all in department)"));
     queueLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
     queueLabel.setForeground(TEXT_DARK);
     panel.add(queueLabel, "gaptop 10");
     panel.add(buildTable(queueTableModel));
 
-    // D. Today's appointments (department-wide).
-    JLabel apptLabel = new JLabel("Today's Appointments — " + (deptName + " (confirming arrives in T3)"));
+    // E. Today's appointments (department-wide).
+    JLabel apptLabel = new JLabel("Today's Appointments — " + (deptName + " (open bookings on the APPOINTMENTS section)"));
     apptLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
     apptLabel.setForeground(TEXT_DARK);
     panel.add(apptLabel, "gaptop 10");
@@ -240,7 +347,20 @@ public class DoctorDashboardPanel extends JPanel {
     return sp;
   }
 
-  private JPanel createStatCard(String title, JLabel countLbl, String icon, Color bgColor, Color iconColor) {
+  // --- UI HELPERS (same style language as AdminDashboardPanel) ---
+  private JLabel createHeaderLink(String text, boolean isActive) {
+    JLabel label = new JLabel(text);
+    label.setFont(new Font("SansSerif", Font.BOLD, 14));
+    label.setForeground(isActive ? WHITE : new Color(150, 170, 190));
+    label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    label.addMouseListener(new MouseAdapter() {
+      public void mouseEntered(MouseEvent e) { label.setForeground(WHITE); }
+      public void mouseExited(MouseEvent e) { if (!isActive) label.setForeground(new Color(150, 170, 190)); }
+    });
+    return label;
+  }
+
+  private JPanel createStatCard(String title, String count, String icon, Color bgColor, Color iconColor) {
     JPanel card = new JPanel(new MigLayout("insets 20, fillx", "[left]push[right]", "[]10[]"));
     card.setBackground(WHITE);
     card.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
@@ -250,11 +370,38 @@ public class DoctorDashboardPanel extends JPanel {
     JLabel iconLbl = new JLabel(icon);
     iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
     iconLbl.setForeground(iconColor);
+    JLabel countLbl = new JLabel(count);
     countLbl.setFont(new Font("SansSerif", Font.BOLD, 36));
     countLbl.setForeground(TEXT_DARK);
     card.add(titleLbl, "cell 0 0");
     card.add(iconLbl, "cell 1 0");
     card.add(countLbl, "cell 0 1, span 2");
+    return card;
+  }
+
+  private JPanel createActionCard(String title, String desc, String icon, String targetScreen) {
+    JPanel card = new JPanel(new MigLayout("wrap 1, insets 20", "[center]", "[]10[]5[]"));
+    card.setBackground(WHITE);
+    card.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
+    card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    JLabel iconLbl = new JLabel(icon);
+    iconLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+    JLabel titleLbl = new JLabel(title);
+    titleLbl.setFont(new Font("SansSerif", Font.BOLD, 16));
+    titleLbl.setForeground(PRIMARY_BLUE);
+    JLabel descLbl = new JLabel(desc);
+    descLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
+    descLbl.setForeground(TEXT_MUTED);
+    card.add(iconLbl);
+    card.add(titleLbl);
+    card.add(descLbl);
+    card.addMouseListener(new MouseAdapter() {
+      public void mouseEntered(MouseEvent e) { card.setBackground(new Color(245, 249, 255)); }
+      public void mouseExited(MouseEvent e) { card.setBackground(WHITE); }
+      public void mouseClicked(MouseEvent e) {
+        showDoctor(targetScreen);
+      }
+    });
     return card;
   }
 }
