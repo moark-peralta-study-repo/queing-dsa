@@ -261,4 +261,9 @@ public class WaitingRoomPanel extends JPanel {
   public JComboBox<Department> getDepartmentCombo() {
     return departmentCombo;
   }
+
+  /** The active-queue table (exposed for the live-refresh verification harness). */
+  public JTable getQueueTable() {
+    return queueTable;
+  }
 }
