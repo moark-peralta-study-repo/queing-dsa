@@ -50,3 +50,10 @@ tasks.named<Test>("test") {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+tasks.register("printRuntimeCp") {
+    doLast {
+        val cp = (project.configurations.getByName("runtimeClasspath").files + project.file("build/classes/java/main")).joinToString(":") { it.absolutePath }
+        println(cp)
+    }
+}

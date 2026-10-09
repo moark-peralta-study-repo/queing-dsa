@@ -47,6 +47,9 @@ public class WaitingRoomPanel extends JPanel {
   private JLabel nowServingSubtitle;
   private JLabel queueCardTitle;
   private JTable queueTable;
+  // Live-display refresh: re-reads the queue every 3s (same cadence as the patient phone app's
+  // polling) so a ticket queued on the staff laptop appears here without anyone touching it.
+  private javax.swing.Timer liveTimer;
   private final DefaultTableModel queueTableModel =
       new DefaultTableModel(new Object[] {"Ticket", "Patient", "Joined", "Status"}, 0) {
         @Override
@@ -166,6 +169,11 @@ public class WaitingRoomPanel extends JPanel {
     center.add(queueCard, BorderLayout.CENTER);
     add(center, BorderLayout.CENTER);
 
+    // Start the live-refresh timer: every 3s re-read the selected department's queue and repaint,
+    // so the waiting-room display tracks what staff does on their own laptop without manual refresh.
+    liveTimer = new javax.swing.Timer(3000, e -> refresh());
+    liveTimer.start();
+
     refresh();
   }
 
@@ -252,5 +260,10 @@ public class WaitingRoomPanel extends JPanel {
 
   public JComboBox<Department> getDepartmentCombo() {
     return departmentCombo;
+  }
+
+  /** The active-queue table (exposed for the live-refresh verification harness). */
+  public JTable getQueueTable() {
+    return queueTable;
   }
 }
