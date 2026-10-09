@@ -6,22 +6,24 @@ import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.function.Consumer;
 
 /**
- * Shared "< " back-to-dashboard button (T-admin). Every admin/staff/doctor/patient sub-page
- * mounts one so the user can always get back to the role's home screen with a single click.
+ * Shared "&lt; Back" back-to-dashboard button (admin expansion). Every admin sub-page mounts one
+ * so the user can always return to the admin dashboard with a single click.
  *
- * <p>Usage: {@code headerPanel.add(BackButtons.back(homeFrame, "ADMIN_HOME"), ...)}
+ * <p>Usage: {@code headerPanel.add(BackButtons.back(parentFrame::showScreen, "ADMIN_DASHBOARD"), ...)}
+ * The {@code navigate} function receives the screen-name string the caller passes as
+ * {@code targetScreen}; typically it's {@code MainFrame::showScreen}.
  */
 public final class BackButtons {
 
   private BackButtons() {}
 
   /**
-   * A clickable "< Back" label that routes {@code homeFrame.showScreen(target)} — the role's
-   * home/dashboard card (e.g. "ADMIN_HOME", "STAFF_HOME", "DOCTOR_DASHBOARD", "DASHBOARD_PAGE").
+   * A clickable "&lt; Back" label that calls {@code navigate.accept(targetScreen)} on click.
    */
-  public static JLabel back(JFrameOwner homeFrame, String targetScreen) {
+  public static JLabel back(Consumer<String> navigate, String targetScreen) {
     JLabel label = new JLabel("<  Back");
     label.setFont(new Font("SansSerif", Font.BOLD, 13));
     label.setForeground(Color.WHITE);
@@ -29,7 +31,7 @@ public final class BackButtons {
     label.addMouseListener(new MouseAdapter() {
       @Override
       public void mouseClicked(MouseEvent e) {
-        homeFrame.showScreen(targetScreen);
+        navigate.accept(targetScreen);
       }
       @Override
       public void mouseEntered(MouseEvent e) {
@@ -41,13 +43,5 @@ public final class BackButtons {
       }
     });
     return label;
-  }
-
-  /**
-   * Interface over MainFrame so this helper doesn't import the frame type directly (keeps the
-   * sub-panel -> frame dependency one-directional via showScreen only).
-   */
-  public interface JFrameOwner {
-    void showScreen(String screenName);
   }
 }
