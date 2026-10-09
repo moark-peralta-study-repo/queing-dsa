@@ -24,6 +24,9 @@ public class MainFrame extends JFrame {
     private WaitingRoomPanel waitingRoomCard;
     private JPanel topContainer; 
     private org.hospitalqueing.model.User loggedInUser;
+    private org.hospitalqueing.web.WebServer webServer;
+    private JLabel serverStatusLabel;
+    private JButton serverToggle;
 
     public MainFrame() {
         setTitle("Hospital Management System");
@@ -70,7 +73,26 @@ public class MainFrame extends JFrame {
         separator.setForeground(new Color(230, 230, 230));
         topContainer.add(separator, BorderLayout.SOUTH);
 
-        add(topContainer, BorderLayout.NORTH);
+        // --- Server control bar (ALWAYS visible, above the nav) ---
+        serverStatusLabel = new JLabel("Starting…");
+        serverStatusLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        serverStatusLabel.setForeground(TEXT_DARK);
+        serverToggle = new JButton("Start");
+        serverToggle.setFont(new Font("SansSerif", Font.BOLD, 11));
+        serverToggle.setFocusPainted(false);
+        serverToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        serverToggle.addActionListener(e -> toggleServer());
+        JPanel serverBar = new JPanel(new BorderLayout(8, 0));
+        serverBar.setBackground(new Color(245, 245, 245));
+        serverBar.setBorder(BorderFactory.createEmptyBorder(5, 30, 5, 30));
+        serverBar.add(serverStatusLabel, BorderLayout.CENTER);
+        serverBar.add(serverToggle, BorderLayout.EAST);
+
+        add(serverBar, BorderLayout.NORTH);
+        JPanel northWrap = new JPanel(new BorderLayout());
+        northWrap.add(serverBar, BorderLayout.NORTH);
+        northWrap.add(topContainer, BorderLayout.CENTER);
+        add(northWrap, BorderLayout.NORTH);
 
         // --- 2. APP STATE SCREENS (CardLayout) ---
         cardLayout = new CardLayout();
@@ -209,6 +231,64 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Registration Failed: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
             }
         });
+
+        // Auto-start the API server on launch (the phone / a second monitor poll it); show the
+        // LAN IP in the status bar so the staff can put it in the phone app's host field.
+        toggleServer();
+
+        // Stop the web server cleanly when the window closes.
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                if (webServer != null) webServer.stop();
+            }
+        });
+    }
+
+    /** Starts/stops the Javalin API server and updates the status bar with the LAN IP to use. */
+    private void toggleServer() {
+        if (webServer == null) {
+            int port = 8080;
+            try {
+                webServer = new org.hospitalqueing.web.WebServer(port);
+                String ip = serverIp();
+                serverStatusLabel.setText("API server running — http://" + ip + ":" + port);
+                serverStatusLabel.setForeground(new Color(46, 125, 50));
+                serverToggle.setText("Stop");
+            } catch (Exception ex) {
+                webServer = null;
+                serverStatusLabel.setText("Server not started (" + rootCause(ex) + ")");
+                serverStatusLabel.setForeground(TEXT_DARK);
+                serverToggle.setText("Start");
+            }
+        } else {
+            webServer.stop();
+            webServer = null;
+            serverStatusLabel.setText("API server stopped");
+            serverStatusLabel.setForeground(TEXT_DARK);
+            serverToggle.setText("Start");
+        }
+    }
+
+    /** Best-effort LAN IP (0.0.0.0 → loopback). For the phone app's host field. */
+    private static String serverIp() {
+        try {
+            java.net.NetworkInterface ni = java.net.NetworkInterface.getByInetAddress(
+                java.net.InetAddress.getLocalHost());
+            if (ni != null) {
+                for (java.net.InetAddress addr : java.util.Collections.list(ni.getInetAddresses())) {
+                    if (addr instanceof java.net.Inet4Address && !addr.isLoopbackAddress()) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "localhost";
+    }
+
+    private static String rootCause(Throwable t) {
+        Throwable x = t;
+        while (x.getCause() != null) x = x.getCause();
+        return x.getMessage() == null ? x.getClass().getSimpleName() : x.getMessage();
     }
 
     public void showScreen(String screenName) {

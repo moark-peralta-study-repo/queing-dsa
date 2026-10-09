@@ -22,6 +22,7 @@ import io.javalin.Javalin;
 public class WebServer {
 
   private final Gson gson = new Gson();
+  private Javalin app;
 
   public WebServer(int port) {
     QueueEntryDAO queueEntryDAO = new QueueEntryDAO();
@@ -33,7 +34,7 @@ public class WebServer {
         new QueueManagementService(
             queueEntryDAO, queueEventDAO, serviceDAO, departmentDAO, counterDAO);
 
-    Javalin app = Javalin.create();
+    app = Javalin.create();
 
     app.exception(
         DatabaseException.class,
@@ -129,5 +130,16 @@ public class WebServer {
         });
 
     app.start(port);
+  }
+
+  /** Stops the web server (idempotent). Called from the UI when the "Stop Server" toggle is off. */
+  public void stop() {
+    if (app != null) {
+      try {
+        app.stop();
+      } catch (Exception ignored) {
+        // Already stopped or never started; nothing to clean up.
+      }
+    }
   }
 }
