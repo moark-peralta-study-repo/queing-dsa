@@ -19,6 +19,7 @@ public class QueueEntry {
   private String calledAt;
   private String serviceStartedAt;
   private String completedAt;
+  private String deletedAt;
 
   public QueueEntry() {}
 
@@ -183,5 +184,14 @@ public class QueueEntry {
 
   public void setCompletedAt(String completedAt) {
     this.completedAt = completedAt;
+  }
+
+  /** Set when the record is soft-deleted (in the trash bin); null when live. */
+  public String getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void setDeletedAt(String deletedAt) {
+    this.deletedAt = deletedAt;
   }
 }

@@ -95,6 +95,7 @@ public class AppointmentDAO {
         """
           SELECT *
           FROM appointments
+          WHERE deleted_at IS NULL
         """;
 
     List<Appointment> appointments = new ArrayList<>();
@@ -120,7 +121,7 @@ public class AppointmentDAO {
         """
           SELECT *
           FROM appointments
-          WHERE patient_id = ?
+          WHERE patient_id = ? AND deleted_at IS NULL
         """;
 
     List<Appointment> appointments = new ArrayList<>();
@@ -203,6 +204,94 @@ public class AppointmentDAO {
     }
   }
 
+  /** All soft-deleted (trashed) appointments, most recently deleted first. */
+  public List<Appointment> findTrashed() {
+
+    String sql =
+        """
+          SELECT *
+          FROM appointments
+          WHERE deleted_at IS NOT NULL
+          ORDER BY deleted_at DESC
+        """;
+
+    List<Appointment> appointments = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        appointments.add(mapAppointment(resultSet));
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return appointments;
+  }
+
+  /** Soft-deletes: stamps deleted_at so the row moves to the trash bin (it stays recoverable). */
+  public void softDelete(int appointmentId) {
+
+    String sql = """
+        UPDATE appointments SET deleted_at = ? WHERE appointment_id = ? AND deleted_at IS NULL
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setString(1, java.time.LocalDateTime.now().withNano(0).toString());
+      statement.setInt(2, appointmentId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Restores a soft-deleted appointment back to live (clears deleted_at). */
+  public void restore(int appointmentId) {
+
+    String sql = """
+        UPDATE appointments SET deleted_at = NULL WHERE appointment_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, appointmentId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Hard delete (from the trash bin): removes the row for good. */
+  public void permanentlyDelete(int appointmentId) {
+
+    String sql =
+        """
+          DELETE FROM appointments
+          WHERE appointment_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, appointmentId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
   private Appointment mapAppointment(ResultSet resultSet) throws SQLException {
 
     Appointment appointment = new Appointment();
@@ -226,6 +315,8 @@ public class AppointmentDAO {
     if (createdAt != null) {
       appointment.setCreatedAt(java.time.LocalDateTime.parse(createdAt.replace(" ", "T")));
     }
+
+    appointment.setDeletedAt(resultSet.getString("deleted_at"));
 
     return appointment;
   }

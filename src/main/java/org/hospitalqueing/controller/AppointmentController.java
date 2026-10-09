@@ -43,4 +43,16 @@ public class AppointmentController {
   public void deleteAppointment(int appointmentId) {
     appointmentService.deleteAppointment(appointmentId);
   }
+
+  public void permanentlyDeleteAppointment(int appointmentId) {
+    appointmentService.permanentlyDeleteAppointment(appointmentId);
+  }
+
+  public void restoreAppointment(int appointmentId) {
+    appointmentService.restoreAppointment(appointmentId);
+  }
+
+  public java.util.List<org.hospitalqueing.model.Appointment> getTrashedAppointments() {
+    return appointmentService.getTrashedAppointments();
+  }
 }

@@ -29,6 +29,19 @@ public class QueueService {
   }
 
   public void delete(int queueId) {
-    queueEntryDAO.delete(queueId);
+    // Soft delete: move to the trash bin so it can be restored or permanently deleted there.
+    queueEntryDAO.softDelete(queueId);
+  }
+
+  public void permanentlyDelete(int queueId) {
+    queueEntryDAO.permanentlyDelete(queueId);
+  }
+
+  public void restore(int queueId) {
+    queueEntryDAO.restore(queueId);
+  }
+
+  public List<QueueEntry> findTrashed() {
+    return queueEntryDAO.findTrashed();
   }
 }

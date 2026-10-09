@@ -54,6 +54,22 @@ public class AppointmentService {
   }
 
   public void deleteAppointment(int appointmentId) {
-    appointmentDAO.delete(appointmentId);
+    // Soft delete: move to the trash bin so it can be restored or permanently deleted there.
+    appointmentDAO.softDelete(appointmentId);
+  }
+
+  /** Permanently removes a trashed appointment. */
+  public void permanentlyDeleteAppointment(int appointmentId) {
+    appointmentDAO.permanentlyDelete(appointmentId);
+  }
+
+  /** Restores a trashed appointment back to a live record. */
+  public void restoreAppointment(int appointmentId) {
+    appointmentDAO.restore(appointmentId);
+  }
+
+  /** All trashed (soft-deleted) appointments. */
+  public List<Appointment> getTrashedAppointments() {
+    return appointmentDAO.findTrashed();
   }
 }

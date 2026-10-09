@@ -31,4 +31,16 @@ public class QueueController {
   public void delete(int queueId) {
     queueService.delete(queueId);
   }
+
+  public void permanentlyDelete(int queueId) {
+    queueService.permanentlyDelete(queueId);
+  }
+
+  public void restore(int queueId) {
+    queueService.restore(queueId);
+  }
+
+  public List<QueueEntry> findTrashed() {
+    return queueService.findTrashed();
+  }
 }

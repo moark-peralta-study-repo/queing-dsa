@@ -13,6 +13,7 @@ public class Appointment {
   private LocalTime appointmentTime;
   private String status;
   private LocalDateTime createdAt;
+  private String deletedAt;
 
   public Appointment() {}
 
@@ -97,5 +98,14 @@ public class Appointment {
 
   public void setCreatedAt(LocalDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  /** Set when the record is soft-deleted (in the trash bin); null when live. */
+  public String getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void setDeletedAt(String deletedAt) {
+    this.deletedAt = deletedAt;
   }
 }

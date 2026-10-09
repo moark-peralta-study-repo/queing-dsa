@@ -39,6 +39,9 @@ public class AppointmentHistoryPanel extends JPanel {
     private JTable historyTable;
     private DefaultTableModel tableModel;
     private MainFrame parentFrame;
+    // Aligned with table rows: each entry is a small holder for the record's type + id,
+    // so the Delete button in the Actions column knows exactly which row to soft-delete.
+    private final java.util.List<RowRef> rowRefs = new java.util.ArrayList<>();
 
     // Filter bar controls
     private JComponent filterPanel;
@@ -75,6 +78,19 @@ public class AppointmentHistoryPanel extends JPanel {
         headerPanel.add(logoLabel);
         headerPanel.add(titleLabel);
 
+        JLabel trashLink = new JLabel("🗑 Trash");
+        trashLink.setFont(new Font("SansSerif", Font.BOLD, 14));
+        trashLink.setForeground(TEXT_DARK);
+        trashLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        trashLink.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                parentFrame.showScreen("TRASH_BIN");
+            }
+            public void mouseEntered(java.awt.event.MouseEvent e) { trashLink.setForeground(PRIMARY_BLUE); }
+            public void mouseExited(java.awt.event.MouseEvent e) { trashLink.setForeground(TEXT_DARK); }
+        });
+        headerPanel.add(trashLink);
+
         JPanel topContainer = new JPanel(new BorderLayout());
         topContainer.add(headerPanel, BorderLayout.CENTER);
         topContainer.add(new JSeparator(), BorderLayout.SOUTH);
@@ -91,7 +107,7 @@ public class AppointmentHistoryPanel extends JPanel {
         centerWrapper.add(pageTitle, BorderLayout.NORTH);
 
         // Define Table Columns
-        String[] columns = {"Date", "Department", "Doctor", "Type", "Status"};
+        String[] columns = {"Date", "Department", "Doctor", "Type", "Status", "Actions"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -116,6 +132,56 @@ public class AppointmentHistoryPanel extends JPanel {
         JScrollPane tableScroll = new JScrollPane(historyTable);
         tableScroll.setBorder(BorderFactory.createLineBorder(CONTROL_BORDER));
         tableScroll.getViewport().setBackground(WHITE);
+
+        // --- 2a. DELETE (soft-delete) action in the Actions column ---
+        int actionsCol = tableModel.getColumnCount() - 1;
+        JButton deleteButton = new JButton("Delete");
+        deleteButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+        deleteButton.setForeground(WHITE);
+        deleteButton.setFocusPainted(false);
+        deleteButton.setBorderPainted(false);
+        deleteButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        deleteButton.addActionListener(e -> {
+            int viewRow = historyTable.getSelectedRow();
+            int modelRow = viewRow < 0 ? -1 : historyTable.convertRowIndexToModel(viewRow);
+            if (modelRow < 0 || modelRow >= rowRefs.size()) {
+                return;
+            }
+            RowRef ref = rowRefs.get(modelRow);
+            int opt = JOptionPane.showConfirmDialog(this,
+                    "Move this " + ref.type.toLowerCase() + " to the trash bin? You can restore it later from the Trash.",
+                    "Delete Record", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (opt != JOptionPane.YES_OPTION) {
+                return;
+            }
+            try {
+                if ("Queue".equals(ref.type)) {
+                    new org.hospitalqueing.controller.QueueController(
+                            new org.hospitalqueing.service.QueueService(new QueueEntryDAO())).delete(ref.id);
+                } else {
+                    new org.hospitalqueing.controller.AppointmentController(
+                            new org.hospitalqueing.service.AppointmentService(new AppointmentDAO()))
+                            .deleteAppointment(ref.id);
+                }
+                loadHistoryData();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Could not delete: " + ex.getMessage(),
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        javax.swing.table.DefaultTableCellRenderer buttonRenderer = new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                    boolean hasFocus, int row, int col) {
+                if (col == actionsCol) {
+                    deleteButton.setBackground(isSelected ? new Color(18, 90, 170) : PRIMARY_BLUE);
+                    return deleteButton;
+                }
+                return super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, col);
+            }
+        };
+        historyTable.setDefaultRenderer(Object.class, buttonRenderer);
 
         // --- 2b. FILTER BAR (above the table, inside the same card) ---
         JPanel bodyPanel = new JPanel(new BorderLayout());
@@ -201,6 +267,7 @@ public class AppointmentHistoryPanel extends JPanel {
         }
         // Always refresh the table on a clean slate; if there's no user yet, show nothing.
         tableModel.setRowCount(0);
+        rowRefs.clear();
 
         User user = parentFrame.getLoggedInUser();
         if (user == null) {
@@ -241,7 +308,8 @@ public class AppointmentHistoryPanel extends JPanel {
             rows.sort((a, b) -> a.dateStr.compareTo(b.dateStr));
 
             for (HistoryRow r : rows) {
-                tableModel.addRow(new Object[]{r.dateStr, r.deptName, r.doctorName, r.type, r.status});
+                tableModel.addRow(new Object[]{r.dateStr, r.deptName, r.doctorName, r.type, r.status, r.type + " #" + r.id});
+                rowRefs.add(new RowRef(r.type, r.id));
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -255,13 +323,26 @@ public class AppointmentHistoryPanel extends JPanel {
         String doctorName;
         String type;
         String status;
+        int id;
 
-        HistoryRow(String dateStr, String deptName, String doctorName, String type, String status) {
+        HistoryRow(String dateStr, String deptName, String doctorName, String type, String status, int id) {
             this.dateStr = dateStr;
             this.deptName = deptName;
             this.doctorName = doctorName;
             this.type = type;
             this.status = status;
+            this.id = id;
+        }
+    }
+
+    /** Record type + id of a history row, so Delete/soft-delete knows exactly which row to act on. */
+    private static final class RowRef {
+        final String type;
+        final int id;
+
+        RowRef(String type, int id) {
+            this.type = type;
+            this.id = id;
         }
     }
 
@@ -285,7 +366,7 @@ public class AppointmentHistoryPanel extends JPanel {
             String doctorName = appt.getDoctorId() != null ? UiData.doctorName(appt.getDoctorId()) : "--";
             if (doctorName == null) doctorName = "--";
             String status = appt.getStatus() == null ? "--" : appt.getStatus();
-            out.add(new HistoryRow(d.toString(), deptName, doctorName, "Appointment", status));
+            out.add(new HistoryRow(d.toString(), deptName, doctorName, "Appointment", status, appt.getAppointmentId()));
         }
         return out;
     }
@@ -315,7 +396,7 @@ public class AppointmentHistoryPanel extends JPanel {
             String doctorName = q.getDoctorId() != null ? UiData.doctorName(q.getDoctorId()) : "--";
             if (doctorName == null) doctorName = "--";
             String status = q.getStatus() == null ? "--" : q.getStatus();
-            out.add(new HistoryRow(d.toString(), deptName, doctorName, "Queue", status));
+            out.add(new HistoryRow(d.toString(), deptName, doctorName, "Queue", status, q.getQueueId()));
         }
         return out;
     }
