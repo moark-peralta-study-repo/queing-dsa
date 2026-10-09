@@ -20,7 +20,8 @@ public class AppointmentPanel extends JPanel {
     private JLabel backBtn;
     private JComboBox<String> departmentCombo;
     private JComboBox<String> doctorCombo;
-    private raven.datetime.DatePicker dateField;
+    private raven.datetime.DatePicker datePicker;
+    private javax.swing.JFormattedTextField dateEditor;
     private JComboBox<String> timeSlotCombo;
     private JTextArea notesArea;
     private JButton submitAppointmentBtn;
@@ -76,9 +77,16 @@ public class AppointmentPanel extends JPanel {
         doctorCombo = new JComboBox<>(new String[]{"Select a Doctor..."});
         doctorCombo.setBackground(WHITE);
 
-        dateField = new raven.datetime.DatePicker();
-        dateField.setDateFormat("yyyy-MM-dd");
-        dateField.setCloseAfterSelected(true);
+        // raven date picker: the visible form control is a JFormattedTextField with a calendar
+        // icon; the DatePicker is the popup body. setEditor() installs the icon + click-to-open.
+        datePicker = new raven.datetime.DatePicker();
+        datePicker.setDateFormat("yyyy-MM-dd");
+        datePicker.setCloseAfterSelected(true);
+        dateEditor = new JFormattedTextField();
+        dateEditor.setBackground(WHITE);
+        dateEditor.putClientProperty("JFormattedTextField.placeholderText", "Select a date");
+        dateEditor.setColumns(12);
+        datePicker.setEditor(dateEditor);
         timeSlotCombo = new JComboBox<>(new String[]{"09:00 AM - 10:00 AM", "10:00 AM - 11:00 AM", "01:00 PM - 02:00 PM", "02:00 PM - 03:00 PM"});
 
         notesArea = new JTextArea(3, 20);
@@ -96,7 +104,7 @@ public class AppointmentPanel extends JPanel {
         card.add(formTitle, "span 2, center, gapbottom 10");
         card.add(new JLabel("Department:")); card.add(departmentCombo, "width 250!, height 35!");
         card.add(new JLabel("Preferred Doctor:")); card.add(doctorCombo, "width 250!, height 35!");
-        card.add(new JLabel("Date:")); card.add(dateField, "width 250!, height 35!");
+        card.add(new JLabel("Date:")); card.add(dateEditor, "width 250!, height 35!");
         card.add(new JLabel("Time Slot:")); card.add(timeSlotCombo, "width 250!, height 35!");
         card.add(new JLabel("Notes / Symptoms:")); card.add(notesScroll, "width 250!, height 70!");
         card.add(submitAppointmentBtn, "span 2, center, width 250!, height 40!");
@@ -152,18 +160,29 @@ public class AppointmentPanel extends JPanel {
         int[] doctorIds = UiData.doctorIdsForDepartment(department);
         int selectedDoctorId = doctorIndex > 0 && doctorIndex - 1 < doctorIds.length
                 ? doctorIds[doctorIndex - 1] : -1;
-        LocalDate selectedDate = dateField.getSelectedDate();
+        // Resolve the chosen date: prefer the picker's committed selection (set by calendar pick
+        // or valid typed input), else fall back to parsing whatever's in the field.
+        LocalDate appointmentDate = datePicker.getSelectedDate();
+        if (appointmentDate == null) {
+            try {
+                String typed = dateEditor.getText() == null ? "" : dateEditor.getText().trim();
+                if (!typed.isEmpty()) {
+                    appointmentDate = LocalDate.parse(typed);
+                }
+            } catch (Exception ignored) {
+                // invalid/empty -> validation below
+            }
+        }
         String timeSlot = (String) timeSlotCombo.getSelectedItem();
         String notes = notesArea.getText().trim();
 
         // GUARDRAIL 1: Empty Field Check
-        if (department == null || selectedDate == null || notes.isEmpty()) {
+        if (department == null || appointmentDate == null || notes.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please select a department, pick a date, and fill in all required fields.", "Validation Error", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // GUARDRAIL 2: Past-Date Prevention (the picker guarantees a valid date)
-        LocalDate appointmentDate = selectedDate;
+        // GUARDRAIL 2: Past-Date Prevention
         if (appointmentDate.isBefore(LocalDate.now())) {
             JOptionPane.showMessageDialog(this, "Appointments cannot be booked in the past.", "Validation Error", JOptionPane.WARNING_MESSAGE);
             return;
@@ -210,7 +229,8 @@ public class AppointmentPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Appointment Booked Successfully!\nService: " + department + "\nDate: " + appointmentDate + " at " + appointmentTime);
 
             doctorCombo.setSelectedIndex(0);
-            dateField.clearSelectedDate();
+            datePicker.clearSelectedDate();
+            dateEditor.setText("");
             notesArea.setText("");
             departmentCombo.setSelectedIndex(0);
             timeSlotCombo.setSelectedIndex(0);
