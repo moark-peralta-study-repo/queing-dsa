@@ -33,6 +33,7 @@ public class DatabaseConnection {
             role_id INTEGER NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            deleted_at TEXT,
 
             FOREIGN KEY (role_id)
                 REFERENCES roles(role_id)
@@ -60,6 +61,7 @@ public class DatabaseConnection {
             birth_date TEXT,
             sex TEXT,
             phone TEXT,
+            deleted_at TEXT,
 
             FOREIGN KEY (user_id)
                 REFERENCES users(user_id)
@@ -74,6 +76,7 @@ public class DatabaseConnection {
 
             first_name TEXT NOT NULL,
             last_name TEXT NOT NULL,
+            phone TEXT,
 
             department_id INTEGER,
 
@@ -388,6 +391,11 @@ public class DatabaseConnection {
       // No-op when the columns already exist.
       migrateAddDeletedAt(statement);
 
+      // Admin accounts (T12): soft-delete support for users + patients, and a phone
+      // column on staff (the accounts edit dialog manages it). No-ops when present.
+      migrateAccountsSoftDelete(statement);
+      migrateStaffPhone(statement);
+
       System.out.println("Database initialized successfully.");
 
     } catch (SQLException e) {
@@ -421,6 +429,7 @@ public class DatabaseConnection {
       {"SKIPPED", "No Show"},
       {"TRANSFERRED", "For Laboratory"},
       {"CANCELLED", "No Show"},
+      {"COMPLETED", "Completed"},
       {"NO_SHOW", "No Show"},
     };
     for (String[] m : migrations) {
@@ -470,6 +479,35 @@ public class DatabaseConnection {
       if (!hasDeletedAt) {
         statement.executeUpdate("ALTER TABLE " + table + " ADD COLUMN deleted_at TEXT");
         System.out.println("Migrated " + table + " table: added deleted_at column (trash bin)");
+      }
+    }
+  }
+
+  /**
+   * Extends the trash bin (T12, admin accounts): adds {@code deleted_at} to {@code users} and
+   * {@code patients} on existing databases so accounts can be soft-deleted and restored.
+   * Safe to run on every startup (no-op once the columns exist).
+   */
+  private static void migrateAccountsSoftDelete(Statement statement) throws SQLException {
+    addDeletedAtColumn(statement, "users");
+    addDeletedAtColumn(statement, "patients");
+  }
+
+  /**
+   * Adds {@code staff.phone} on existing databases (the accounts edit dialog manages staff
+   * contact info). Safe to run on every startup (no-op once the column exists).
+   */
+  private static void migrateStaffPhone(Statement statement) throws SQLException {
+    try (ResultSet rs = statement.executeQuery("PRAGMA table_info(staff)")) {
+      boolean hasPhone = false;
+      while (rs.next()) {
+        if ("phone".equals(rs.getString("name"))) {
+          hasPhone = true;
+        }
+      }
+      if (!hasPhone) {
+        statement.executeUpdate("ALTER TABLE staff ADD COLUMN phone TEXT");
+        System.out.println("Migrated staff table: added phone column (admin accounts)");
       }
     }
   }

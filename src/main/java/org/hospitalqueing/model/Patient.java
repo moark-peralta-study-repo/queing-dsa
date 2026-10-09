@@ -10,6 +10,8 @@ public class Patient {
   private String birthDate;
   private String sex;
   private String phone;
+  /** Set when the patient row is soft-deleted (with its account, in the trash bin); null when live. */
+  private String deletedAt;
 
   public Patient() {}
 
@@ -94,5 +96,13 @@ public class Patient {
 
   public String getPhone() {
     return phone;
+  }
+
+  public String getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void setDeletedAt(String deletedAt) {
+    this.deletedAt = deletedAt;
   }
 }

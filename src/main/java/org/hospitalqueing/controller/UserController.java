@@ -27,4 +27,32 @@ public class UserController {
   public void deleteUser(int userId) {
     userService.deleteUser(userId);
   }
+
+  public void updateUser(User user) {
+    userService.updateUser(user);
+  }
+
+  public User getUserByUsername(String username) {
+    return userService.getUserByUsername(username);
+  }
+
+  /** Soft-deletes an account (it lands in the trash bin until restored or permanently deleted). */
+  public void softDeleteUser(int userId) {
+    userService.softDeleteUser(userId);
+  }
+
+  /** Restores a trashed account back to live. */
+  public void restoreUser(int userId) {
+    userService.restoreUser(userId);
+  }
+
+  /** Permanently removes a trashed account. */
+  public void permanentlyDeleteUser(int userId) {
+    userService.permanentlyDeleteUser(userId);
+  }
+
+  /** All trashed (soft-deleted) accounts. */
+  public List<User> getTrashedUsers() {
+    return userService.getTrashedUsers();
+  }
 }

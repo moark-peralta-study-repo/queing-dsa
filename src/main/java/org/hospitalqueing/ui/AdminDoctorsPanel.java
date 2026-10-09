@@ -38,8 +38,21 @@ public class AdminDoctorsPanel extends JPanel {
     this.parentFrame = parentFrame;
     setLayout(new BorderLayout());
     setBackground(new Color(245, 247, 250));
+    add(buildHeader("DOCTORS"), BorderLayout.NORTH);
     add(buildScrollableArea(), BorderLayout.CENTER);
     refresh();
+  }
+
+  /** Dark header bar with the shared "< Back" link to the admin dashboard. */
+  private JPanel buildHeader(String title) {
+    JPanel headerPanel = new JPanel(new MigLayout("insets 12 20 12 20, aligny center", "[left]push[right]", "[center]"));
+    headerPanel.setBackground(new Color(13, 37, 63));
+    JLabel titleLabel = new JLabel(title);
+    titleLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
+    titleLabel.setForeground(Color.WHITE);
+    headerPanel.add(BackButtons.back(parentFrame::showScreen, "ADMIN_DASHBOARD"));
+    headerPanel.add(titleLabel);
+    return headerPanel;
   }
 
   private JPanel buildScrollableArea() {
