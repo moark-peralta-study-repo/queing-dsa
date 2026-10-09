@@ -151,6 +151,7 @@ public class QueueEntryDAO {
         """
           SELECT *
           FROM queue_entries
+          WHERE deleted_at IS NULL
         """;
 
     List<QueueEntry> queueEntries = new ArrayList<>();
@@ -176,7 +177,7 @@ public class QueueEntryDAO {
         """
           SELECT *
           FROM queue_entries
-          WHERE patient_id = ?
+          WHERE patient_id = ? AND deleted_at IS NULL
         """;
 
     List<QueueEntry> queueEntries = new ArrayList<>();
@@ -324,6 +325,96 @@ public class QueueEntryDAO {
 
     queueEntry.setCompletedAt(resultSet.getString("completed_at"));
 
+    queueEntry.setDeletedAt(resultSet.getString("deleted_at"));
+
     return queueEntry;
+  }
+
+  /** All soft-deleted (trashed) queue entries, most recently deleted first. */
+  public List<QueueEntry> findTrashed() {
+
+    String sql =
+        """
+          SELECT *
+          FROM queue_entries
+          WHERE deleted_at IS NOT NULL
+          ORDER BY deleted_at DESC
+        """;
+
+    List<QueueEntry> queueEntries = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        queueEntries.add(mapQueueEntry(resultSet));
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return queueEntries;
+  }
+
+  /** Soft-deletes: stamps deleted_at so the entry moves to the trash bin (it stays recoverable). */
+  public void softDelete(int queueId) {
+
+    String sql = """
+        UPDATE queue_entries SET deleted_at = ? WHERE queue_id = ? AND deleted_at IS NULL
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setString(1, java.time.LocalDateTime.now().withNano(0).toString());
+      statement.setInt(2, queueId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Restores a soft-deleted queue entry back to live (clears deleted_at). */
+  public void restore(int queueId) {
+
+    String sql = """
+        UPDATE queue_entries SET deleted_at = NULL WHERE queue_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, queueId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Hard delete (from the trash bin): removes the row for good. */
+  public void permanentlyDelete(int queueId) {
+
+    String sql =
+        """
+          DELETE FROM queue_entries
+          WHERE queue_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, queueId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
   }
 }

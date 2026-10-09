@@ -90,6 +90,7 @@ public class MainFrame extends JFrame {
         
         patientQueueCard = new PatientQueuePanel(this); // Now saves to class variable
         waitingRoomCard = new WaitingRoomPanel();
+        TrashBinPanel trashCard = new TrashBinPanel(this);
 
         mainContentPanel.add(homePage, "LANDING_PAGE");
         mainContentPanel.add(loginCard, "LOGIN_PAGE");
@@ -103,6 +104,7 @@ public class MainFrame extends JFrame {
         mainContentPanel.add(doctorDashboardCard, "DOCTOR_DASHBOARD");
         mainContentPanel.add(patientQueueCard, "QUEUE_STATUS_PAGE");
         mainContentPanel.add(waitingRoomCard, "WAITING_ROOM");
+        mainContentPanel.add(trashCard, "TRASH_BIN");
 
         add(mainContentPanel, BorderLayout.CENTER);
 
@@ -239,6 +241,14 @@ public class MainFrame extends JFrame {
         
         if ("WAITING_ROOM".equals(screenName) && waitingRoomCard != null) {
             waitingRoomCard.refresh();
+        }
+
+        if ("TRASH_BIN".equals(screenName)) {
+            for (Component comp : mainContentPanel.getComponents()) {
+                if (comp instanceof TrashBinPanel) {
+                    ((TrashBinPanel) comp).loadTrashData();
+                }
+            }
         }
     }
 

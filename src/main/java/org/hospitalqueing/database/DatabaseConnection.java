@@ -175,6 +175,8 @@ public class DatabaseConnection {
 
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+            deleted_at TEXT,
+
             FOREIGN KEY (patient_id)
                 REFERENCES patients(patient_id),
 
@@ -222,6 +224,7 @@ public class DatabaseConnection {
             called_at TEXT,
             service_started_at TEXT,
             completed_at TEXT,
+            deleted_at TEXT,
 
             FOREIGN KEY (patient_id)
                 REFERENCES patients(patient_id),
@@ -381,6 +384,10 @@ public class DatabaseConnection {
       // existing DBs. No-op when the column already exists.
       migrateDoctorsUserIdColumn(statement);
 
+      // Trash bin (T10): soft-delete support via deleted_at on appointments + queue_entries.
+      // No-op when the columns already exist.
+      migrateAddDeletedAt(statement);
+
       System.out.println("Database initialized successfully.");
 
     } catch (SQLException e) {
@@ -438,6 +445,31 @@ public class DatabaseConnection {
       if (!hasUserId) {
         statement.executeUpdate("ALTER TABLE doctors ADD COLUMN user_id INTEGER");
         System.out.println("Migrated doctors table: added user_id column (DOCTOR role support)");
+      }
+    }
+  }
+
+  /**
+   * Adds the {@code deleted_at} soft-delete column (T10) to {@code appointments} and
+   * {@code queue_entries} on existing databases. Pre-T10 DBs lack the column, so we ALTER TABLE
+   * when it isn't there yet. Safe to run on every startup (a no-op once the columns exist).
+   */
+  private static void migrateAddDeletedAt(Statement statement) throws SQLException {
+    addDeletedAtColumn(statement, "appointments");
+    addDeletedAtColumn(statement, "queue_entries");
+  }
+
+  private static void addDeletedAtColumn(Statement statement, String table) throws SQLException {
+    try (ResultSet rs = statement.executeQuery("PRAGMA table_info(" + table + ")")) {
+      boolean hasDeletedAt = false;
+      while (rs.next()) {
+        if ("deleted_at".equals(rs.getString("name"))) {
+          hasDeletedAt = true;
+        }
+      }
+      if (!hasDeletedAt) {
+        statement.executeUpdate("ALTER TABLE " + table + " ADD COLUMN deleted_at TEXT");
+        System.out.println("Migrated " + table + " table: added deleted_at column (trash bin)");
       }
     }
   }
