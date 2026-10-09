@@ -37,6 +37,9 @@ public class AdminDashboardPanel extends JPanel {
   private final AdminDoctorsPanel doctorsPanel;
   private final AdminStaffPanel staffPanel;
   private final AdminReportsPanel reportsPanel;
+  private final AdminAccountsPanel accountsPanel;
+  private final AdminDepartmentDetailPanel departmentDetailPanel;
+  private final AdminLiveQueuePanel liveQueuePanel;
   private JPanel homeScreen;
 
   public AdminDashboardPanel(MainFrame parentFrame) {
@@ -45,23 +48,29 @@ public class AdminDashboardPanel extends JPanel {
     setBackground(BACKGROUND_LIGHT);
 
     // --- 1. ADMIN HEADER (Dark Blue Nav) ---
-    JPanel headerPanel = new JPanel(new MigLayout("insets 15 30 15 30, aligny center", "[left]push[center]25[center]25[center]25[center]25[center]push[right]", "[center]"));
+    JPanel headerPanel = new JPanel(new MigLayout("insets 15 20 15 20, aligny center", "[left]push[center]20[center]20[center]20[center]20[center]20[center]20[center]20[center]push[right]", "[center]"));
     headerPanel.setBackground(HEADER_DARK_BLUE);
     headerPanel.add(new JLabel(" "), "cell 0 0");
 
     JLabel homeNav = createHeaderLink("DASHBOARD", true);
+    JLabel accountsNav = createHeaderLink("ACCOUNTS", false);
     JLabel deptNav = createHeaderLink("DEPARTMENTS", false);
     JLabel serviceNav = createHeaderLink("SERVICES", false);
     JLabel doctorNav = createHeaderLink("DOCTORS", false);
     JLabel staffNav = createHeaderLink("STAFF", false);
+    JLabel deptDetailNav = createHeaderLink("DEPT DETAIL", false);
+    JLabel liveQueueNav = createHeaderLink("LIVE QUEUE", false);
     JLabel reportsNav = createHeaderLink("REPORTS", false);
 
     headerPanel.add(homeNav, "cell 1 0");
-    headerPanel.add(deptNav, "cell 2 0");
-    headerPanel.add(serviceNav, "cell 3 0");
-    headerPanel.add(doctorNav, "cell 4 0");
-    headerPanel.add(staffNav, "cell 5 0");
-    headerPanel.add(reportsNav, "cell 6 0");
+    headerPanel.add(accountsNav, "cell 2 0");
+    headerPanel.add(deptNav, "cell 3 0");
+    headerPanel.add(serviceNav, "cell 4 0");
+    headerPanel.add(doctorNav, "cell 5 0");
+    headerPanel.add(staffNav, "cell 6 0");
+    headerPanel.add(deptDetailNav, "cell 7 0");
+    headerPanel.add(liveQueueNav, "cell 8 0");
+    headerPanel.add(reportsNav, "cell 9 0");
 
     JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
     rightControls.setOpaque(false);
@@ -72,7 +81,7 @@ public class AdminDashboardPanel extends JPanel {
     logoutBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
     logoutBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     rightControls.add(logoutBtn);
-    headerPanel.add(rightControls, "cell 7 0");
+    headerPanel.add(rightControls, "cell 10 0");
 
     add(headerPanel, BorderLayout.NORTH);
 
@@ -85,23 +94,32 @@ public class AdminDashboardPanel extends JPanel {
     doctorsPanel = new AdminDoctorsPanel(parentFrame);
     staffPanel = new AdminStaffPanel(parentFrame);
     reportsPanel = new AdminReportsPanel(parentFrame);
+    accountsPanel = new AdminAccountsPanel(parentFrame);
+    departmentDetailPanel = new AdminDepartmentDetailPanel(parentFrame);
+    liveQueuePanel = new AdminLiveQueuePanel(parentFrame);
 
     homeScreen = buildHomeScreen();
     adminContentPanel.add(homeScreen, "ADMIN_HOME");
+    adminContentPanel.add(accountsPanel, "ADMIN_ACCOUNTS");
     adminContentPanel.add(departmentsPanel, "ADMIN_DEPARTMENTS");
     adminContentPanel.add(servicesPanel, "ADMIN_SERVICES");
     adminContentPanel.add(doctorsPanel, "ADMIN_DOCTORS");
     adminContentPanel.add(staffPanel, "ADMIN_STAFF");
+    adminContentPanel.add(departmentDetailPanel, "ADMIN_DEPT_DETAIL");
+    adminContentPanel.add(liveQueuePanel, "ADMIN_LIVE_QUEUE");
     adminContentPanel.add(reportsPanel, "ADMIN_REPORTS");
 
     add(adminContentPanel, BorderLayout.CENTER);
 
     // --- 3. NAV WIRING ---
     homeNav.addMouseListener(onClick(() -> showAdmin("ADMIN_HOME")));
+    accountsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_ACCOUNTS")));
     deptNav.addMouseListener(onClick(() -> showAdmin("ADMIN_DEPARTMENTS")));
     serviceNav.addMouseListener(onClick(() -> showAdmin("ADMIN_SERVICES")));
     doctorNav.addMouseListener(onClick(() -> showAdmin("ADMIN_DOCTORS")));
     staffNav.addMouseListener(onClick(() -> showAdmin("ADMIN_STAFF")));
+    deptDetailNav.addMouseListener(onClick(() -> showAdmin("ADMIN_DEPT_DETAIL")));
+    liveQueueNav.addMouseListener(onClick(() -> showAdmin("ADMIN_LIVE_QUEUE")));
     reportsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_REPORTS")));
 
     logoutBtn.addActionListener(e -> {
@@ -124,6 +142,13 @@ public class AdminDashboardPanel extends JPanel {
     if ("ADMIN_REPORTS".equals(card) && reportsPanel != null) {
       reportsPanel.refresh();
     }
+    if ("ADMIN_ACCOUNTS".equals(card) && accountsPanel != null) {
+      accountsPanel.loadAccountsData();
+    }
+    if ("ADMIN_DEPT_DETAIL".equals(card) && departmentDetailPanel != null) {
+      departmentDetailPanel.refresh();
+    }
+    // AdminLiveQueuePanel runs its own 3s Swing Timer; no manual refresh needed on show.
     adminCardLayout.show(adminContentPanel, card);
   }
 
@@ -134,6 +159,8 @@ public class AdminDashboardPanel extends JPanel {
     doctorsPanel.refresh();
     staffPanel.refresh();
     reportsPanel.refresh();
+    if (accountsPanel != null) accountsPanel.loadAccountsData();
+    if (departmentDetailPanel != null) departmentDetailPanel.refresh();
   }
 
   private java.awt.event.MouseListener onClick(Runnable action) {
@@ -189,12 +216,25 @@ public class AdminDashboardPanel extends JPanel {
 
     JPanel actionsContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
     actionsContainer.setOpaque(false);
+    actionsContainer.add(createActionCard("Accounts", "All logins: edit, roles, delete", "👥", "ADMIN_ACCOUNTS"));
     actionsContainer.add(createActionCard("Departments", "Add or remove hospital units", "🏥", "ADMIN_DEPARTMENTS"));
     actionsContainer.add(createActionCard("Services", "What patients can book", "🩻", "ADMIN_SERVICES"));
     actionsContainer.add(createActionCard("Doctors", "Who is on roster", "🩺", "ADMIN_DOCTORS"));
     actionsContainer.add(createActionCard("Staff", "Logins & roles", "🧑‍⚕️", "ADMIN_STAFF"));
-    actionsContainer.add(createActionCard("Reports", "Activity & analytics", "📊", "ADMIN_REPORTS"));
     panel.add(actionsContainer);
+
+    // D. Monitor & reporting quick actions.
+    JLabel monitorLabel = new JLabel("Monitor");
+    monitorLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+    monitorLabel.setForeground(TEXT_DARK);
+    panel.add(monitorLabel, "gaptop 10");
+
+    JPanel monitorContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
+    monitorContainer.setOpaque(false);
+    monitorContainer.add(createActionCard("Dept Detail", "Per-department activity & doctors", "📋", "ADMIN_DEPT_DETAIL"));
+    monitorContainer.add(createActionCard("Live Queue", "All departments, updates 3s", "🔴", "ADMIN_LIVE_QUEUE"));
+    monitorContainer.add(createActionCard("Reports", "Activity & analytics", "📊", "ADMIN_REPORTS"));
+    panel.add(monitorContainer);
 
     return panel;
   }
