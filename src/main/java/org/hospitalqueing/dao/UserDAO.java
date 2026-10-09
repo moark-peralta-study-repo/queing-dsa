@@ -145,9 +145,12 @@ public class UserDAO {
   }
 
   public List<User> findAll() {
+    // Live accounts only; soft-deleted (trashed) accounts are listed by findTrashed().
     String sql =
         """
         SELECT * FROM users
+        WHERE deleted_at IS NULL
+        ORDER BY user_id
         """;
 
     List<User> users = new ArrayList<>();
@@ -181,6 +184,91 @@ public class UserDAO {
       user.setCreatedAt(java.time.LocalDateTime.parse(createdAt.replace(" ", "T")));
     }
 
+    user.setDeletedAt(resultSet.getString("deleted_at"));
+
     return user;
+  }
+
+  /** All soft-deleted (trashed) accounts, most recently deleted first. */
+  public List<User> findTrashed() {
+    String sql =
+        """
+        SELECT * FROM users
+        WHERE deleted_at IS NOT NULL
+        ORDER BY deleted_at DESC
+        """;
+
+    List<User> users = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        users.add(mapUser(resultSet));
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return users;
+  }
+
+  /** Soft-deletes: stamps deleted_at so the account moves to the trash bin (it stays recoverable). */
+  public void softDelete(int userId) {
+    String sql = """
+        UPDATE users SET deleted_at = ? WHERE user_id = ? AND deleted_at IS NULL
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setString(1, java.time.LocalDateTime.now().withNano(0).toString());
+      statement.setInt(2, userId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Restores a soft-deleted account back to live (clears deleted_at). */
+  public void restore(int userId) {
+    String sql = """
+        UPDATE users SET deleted_at = NULL WHERE user_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, userId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Hard delete (from the trash bin): removes the account row for good. */
+  public void permanentlyDelete(int userId) {
+    String sql =
+        """
+        DELETE FROM users
+        WHERE user_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, userId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
   }
 }

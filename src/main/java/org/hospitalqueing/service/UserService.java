@@ -27,4 +27,32 @@ public class UserService {
   public void deleteUser(int userId) {
     userDAO.delete(userId);
   }
+
+  public void updateUser(User user) {
+    userDAO.update(user);
+  }
+
+  public User getUserByUsername(String username) {
+    return userDAO.findByUsername(username);
+  }
+
+  /** Soft-deletes an account: it moves to the trash bin, recoverable via restore. */
+  public void softDeleteUser(int userId) {
+    userDAO.softDelete(userId);
+  }
+
+  /** Restores a trashed account back to live. */
+  public void restoreUser(int userId) {
+    userDAO.restore(userId);
+  }
+
+  /** Permanently removes a trashed account. */
+  public void permanentlyDeleteUser(int userId) {
+    userDAO.permanentlyDelete(userId);
+  }
+
+  /** All trashed (soft-deleted) accounts. */
+  public List<User> getTrashedUsers() {
+    return userDAO.findTrashed();
+  }
 }

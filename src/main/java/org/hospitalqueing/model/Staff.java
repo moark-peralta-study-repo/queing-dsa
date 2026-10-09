@@ -6,6 +6,7 @@ public class Staff {
 
   private String firstName;
   private String lastName;
+  private String phone;
 
   private Integer departmentId;
 
@@ -49,6 +50,14 @@ public class Staff {
 
   public void setLastName(String lastName) {
     this.lastName = lastName;
+  }
+
+  public String getPhone() {
+    return phone;
+  }
+
+  public void setPhone(String phone) {
+    this.phone = phone;
   }
 
   public Integer getDepartmentId() {

@@ -87,6 +87,7 @@ public class PatientDAO {
         """
           SELECT *
           FROM patients
+          WHERE deleted_at IS NULL
         """;
 
     List<Patient> patients = new ArrayList<>();
@@ -164,7 +165,7 @@ public class PatientDAO {
         """
           SELECT *
           FROM patients
-          WHERE user_id = ?
+          WHERE user_id = ? AND deleted_at IS NULL
         """;
 
     try (Connection connection = DatabaseConnection.getConnection();
@@ -197,7 +198,92 @@ public class PatientDAO {
     patient.setBirthDate(resultSet.getString("birth_date"));
     patient.setSex(resultSet.getString("sex"));
     patient.setPhone(resultSet.getString("phone"));
+    patient.setDeletedAt(resultSet.getString("deleted_at"));
 
     return patient;
+  }
+
+  /** All soft-deleted (trashed) patient rows, most recently deleted first. */
+  public List<Patient> findTrashed() {
+    String sql =
+        """
+          SELECT *
+          FROM patients
+          WHERE deleted_at IS NOT NULL
+          ORDER BY deleted_at DESC
+        """;
+
+    List<Patient> patients = new ArrayList<>();
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery()) {
+
+      while (resultSet.next()) {
+        patients.add(mapPatient(resultSet));
+      }
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+
+    return patients;
+  }
+
+  /** Soft-deletes: stamps deleted_at so the row moves to the trash bin (it stays recoverable). */
+  public void softDelete(int patientId) {
+    String sql = """
+        UPDATE patients SET deleted_at = ? WHERE patient_id = ? AND deleted_at IS NULL
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setString(1, java.time.LocalDateTime.now().withNano(0).toString());
+      statement.setInt(2, patientId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Restores a soft-deleted patient row back to live (clears deleted_at). */
+  public void restore(int patientId) {
+    String sql = """
+        UPDATE patients SET deleted_at = NULL WHERE patient_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, patientId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
+  }
+
+  /** Hard delete (from the trash bin): removes the patient row for good. */
+  public void permanentlyDelete(int patientId) {
+    String sql =
+        """
+          DELETE FROM patients
+          WHERE patient_id = ?
+        """;
+
+    try (Connection connection = DatabaseConnection.getConnection();
+        PreparedStatement statement = connection.prepareStatement(sql)) {
+
+      statement.setInt(1, patientId);
+
+      statement.executeUpdate();
+
+    } catch (SQLException e) {
+      throw new DatabaseException("Database operation failed", e);
+    }
   }
 }

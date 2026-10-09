@@ -22,9 +22,10 @@ public class StaffDAO {
             user_id,
             first_name,
             last_name,
+            phone,
             department_id
           )
-          VALUES (?, ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?)
         """;
 
     try (Connection connection = DatabaseConnection.getConnection();
@@ -34,12 +35,13 @@ public class StaffDAO {
       statement.setInt(1, staff.getUserId());
       statement.setString(2, staff.getFirstName());
       statement.setString(3, staff.getLastName());
+      statement.setString(4, staff.getPhone());
 
       // department_id
       if (staff.getDepartmentId() != null) {
-        statement.setInt(4, staff.getDepartmentId());
+        statement.setInt(5, staff.getDepartmentId());
       } else {
-        statement.setNull(4, java.sql.Types.INTEGER);
+        statement.setNull(5, java.sql.Types.INTEGER);
       }
 
       statement.executeUpdate();
@@ -145,6 +147,7 @@ public class StaffDAO {
           SET user_id = ?,
               first_name = ?,
               last_name = ?,
+              phone = ?,
               department_id = ?
           WHERE staff_id = ?
         """;
@@ -155,15 +158,16 @@ public class StaffDAO {
       statement.setInt(1, staff.getUserId());
       statement.setString(2, staff.getFirstName());
       statement.setString(3, staff.getLastName());
+      statement.setString(4, staff.getPhone());
 
       // department_id
       if (staff.getDepartmentId() != null) {
-        statement.setInt(4, staff.getDepartmentId());
+        statement.setInt(5, staff.getDepartmentId());
       } else {
-        statement.setNull(4, java.sql.Types.INTEGER);
+        statement.setNull(5, java.sql.Types.INTEGER);
       }
 
-      statement.setInt(5, staff.getStaffId());
+      statement.setInt(6, staff.getStaffId());
 
       statement.executeUpdate();
 
@@ -203,6 +207,10 @@ public class StaffDAO {
     staff.setFirstName(resultSet.getString("first_name"));
 
     staff.setLastName(resultSet.getString("last_name"));
+
+    // phone arrives from the admin-accounts migration; guard so pre-migration DBs can't break reads.
+    int phoneCol = resultSet.findColumn("phone");
+    staff.setPhone(phoneCol == 0 ? null : resultSet.getString(phoneCol));
 
     staff.setDepartmentId((Integer) resultSet.getObject("department_id"));
 

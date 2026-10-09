@@ -9,6 +9,8 @@ public class User {
   private int roleId;
   private boolean isActive;
   private LocalDateTime createdAt;
+  /** Set when the account is soft-deleted (in the trash bin); null when live. */
+  private String deletedAt;
 
   public User() {}
 
@@ -73,5 +75,13 @@ public class User {
 
   public void setCreatedAt(LocalDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public String getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void setDeletedAt(String deletedAt) {
+    this.deletedAt = deletedAt;
   }
 }

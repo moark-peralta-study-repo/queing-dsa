@@ -5,18 +5,28 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.hospitalqueing.dao.AppointmentDAO;
+import org.hospitalqueing.dao.PatientDAO;
 import org.hospitalqueing.dao.QueueEntryDAO;
+import org.hospitalqueing.dao.RoleDAO;
+import org.hospitalqueing.dao.UserDAO;
 import org.hospitalqueing.model.Appointment;
+import org.hospitalqueing.model.Patient;
 import org.hospitalqueing.model.QueueEntry;
+import org.hospitalqueing.model.Role;
+import org.hospitalqueing.model.User;
 
 /**
- * Trash bin (T10): shows soft-deleted (deleted) records — appointments AND queue entries — so the
- * user can Restore them back to live, or permanently delete them for good. Deleting from the
- * history screen routes here (it stamps deleted_at); nothing is hard-removed until the user picks
- * "permanently delete" from this screen.
+ * Trash bin (T10, extended for admin accounts): shows soft-deleted (trashed) records —
+ * appointments, queue entries, AND accounts — so the user can Restore them back to live, or
+ * permanently delete them for good. Deleting from the history screen routes here (it stamps
+ * deleted_at); nothing is hard-removed until the user picks "permanently delete" from this screen.
+ *
+ * <p>Accounts get a third section with per-row Restore / Delete buttons: permanently deleting an
+ * account also permanently deletes its linked patient row if that one was trashed with it.
  */
 public class TrashBinPanel extends JPanel {
 
@@ -32,6 +42,11 @@ public class TrashBinPanel extends JPanel {
     private DefaultTableModel tableModel;
     private JButton restoreButton;
     private JButton permanentlyDeleteButton;
+
+    // --- Trashed accounts section (third section) ---
+    private JTable accountsTable;
+    private DefaultTableModel accountsModel;
+    private final List<User> trashedAccounts = new ArrayList<>();
 
     // Aligned with table rows: type (Appointment/Queue) + id, so the buttons know the target.
     private final java.util.List<Ref> refs = new java.util.ArrayList<>();
@@ -132,7 +147,45 @@ public class TrashBinPanel extends JPanel {
         JScrollPane tableScroll = new JScrollPane(trashTable);
         tableScroll.setBorder(BorderFactory.createLineBorder(CONTROL_BORDER));
         tableScroll.getViewport().setBackground(WHITE);
-        centerWrapper.add(tableScroll, BorderLayout.CENTER);
+
+        // --- TRASHED ACCOUNTS SECTION (third section, stacked below the main table) ---
+        JPanel accountsSection = new JPanel(new BorderLayout(0, 6));
+        accountsSection.setOpaque(false);
+
+        JLabel accountsTitle = new JLabel("Trashed Accounts");
+        accountsTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
+        accountsTitle.setForeground(TEXT_DARK);
+        accountsTitle.setOpaque(true);
+        accountsTitle.setBackground(BACKGROUND_LIGHT);
+        accountsTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+        accountsSection.add(accountsTitle, BorderLayout.NORTH);
+
+        String[] accountColumns = {"Username", "Role", "Name", "Deleted At", "", ""};
+        accountsModel = new DefaultTableModel(accountColumns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 4 || column == 5;
+            }
+        };
+        accountsTable = new JTable(accountsModel);
+        accountsTable.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        accountsTable.setRowHeight(36);
+        accountsTable.setGridColor(new Color(230, 230, 230));
+        accountsTable.setSelectionBackground(new Color(253, 231, 231));
+        accountsTable.setSelectionForeground(TEXT_DARK);
+        JScrollPane accountsScroll = new JScrollPane(accountsTable);
+        accountsScroll.setBorder(BorderFactory.createLineBorder(CONTROL_BORDER));
+        accountsScroll.getViewport().setBackground(WHITE);
+        accountsScroll.setPreferredSize(new Dimension(100, 140));
+        accountsSection.add(accountsScroll, BorderLayout.CENTER);
+
+        // Main table on top, trashed-accounts section below it.
+        JPanel stacked = new JPanel(new BorderLayout(0, 16));
+        stacked.setOpaque(false);
+        stacked.add(tableScroll, BorderLayout.CENTER);
+        stacked.add(accountsSection, BorderLayout.SOUTH);
+        centerWrapper.add(stacked, BorderLayout.CENTER);
+
         add(centerWrapper, BorderLayout.CENTER);
 
         restoreButton.addActionListener(e -> doAction("restore"));
@@ -166,8 +219,118 @@ public class TrashBinPanel extends JPanel {
                         q.getDeletedAt() == null ? "--" : q.getDeletedAt()});
                 refs.add(new Ref("Queue", q.getQueueId()));
             }
+            loadTrashedAccounts();
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+
+    private void loadTrashedAccounts() {
+        accountsModel.setRowCount(0);
+        trashedAccounts.clear();
+        try {
+            java.util.Map<Integer, String> roleNames = new java.util.HashMap<>();
+            for (Role role : new RoleDAO().findAll()) {
+                roleNames.put(role.getRoleId(), role.getRoleName());
+            }
+            UserDAO userDAO = new UserDAO();
+            PatientDAO patientDAO = new PatientDAO();
+            for (User user : userDAO.findTrashed()) {
+                trashedAccounts.add(user);
+                String linkedName = linkedName(user, patientDAO);
+                accountsModel.addRow(new Object[]{
+                        user.getUsername(),
+                        roleNames.getOrDefault(user.getRoleId(), "--"),
+                        linkedName,
+                        user.getDeletedAt() == null ? "--" : user.getDeletedAt()});
+                int r = accountsModel.getRowCount() - 1;
+                JButton restore = new JButton("Restore");
+                styleSmallButton(restore, PRIMARY_BLUE);
+                restore.addActionListener(e -> restoreAccount(user));
+                accountsModel.setValueAt(restore, r, 4);
+                JButton permanent = new JButton("Delete");
+                styleSmallButton(permanent, DANGER);
+                permanent.addActionListener(e -> permanentDeleteAccount(user));
+                accountsModel.setValueAt(permanent, r, 5);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    /** Name from the linked profile (patient row first — it may be trashed with the account). */
+    private String linkedName(User user, PatientDAO patientDAO) {
+        Patient trashedPatient = null;
+        try {
+            for (Patient p : patientDAO.findTrashed()) {
+                if (p.getUserId() == user.getUserId()) {
+                    trashedPatient = p;
+                    break;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        if (trashedPatient != null) {
+            return trashedPatient.getFirstName() + " " + trashedPatient.getLastName();
+        }
+        Patient live = patientDAO.findByUserId(user.getUserId());
+        if (live != null) {
+            return live.getFirstName() + " " + live.getLastName();
+        }
+        try {
+            org.hospitalqueing.model.Staff staff = new org.hospitalqueing.dao.StaffDAO().findByUser(user.getUserId());
+            if (staff != null) {
+                return staff.getFirstName() + " " + staff.getLastName();
+            }
+            org.hospitalqueing.model.Doctor doctor = new org.hospitalqueing.dao.DoctorDAO().findByUser(user.getUserId());
+            if (doctor != null) {
+                return "Dr. " + doctor.getFirstName() + " " + doctor.getLastName();
+            }
+        } catch (Exception ignored) {
+        }
+        return "-";
+    }
+
+    private void restoreAccount(User user) {
+        try {
+            new UserDAO().restore(user.getUserId());
+            // If the linked patient row was trashed with the account, bring it back too.
+            PatientDAO patientDAO = new PatientDAO();
+            for (Patient p : patientDAO.findTrashed()) {
+                if (p.getUserId() == user.getUserId()) {
+                    patientDAO.restore(p.getPatientId());
+                    break;
+                }
+            }
+            loadTrashData();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Could not restore account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void permanentDeleteAccount(User user) {
+        int opt = JOptionPane.showConfirmDialog(this,
+                "Permanently delete account \"" + user.getUsername() + "\"? This cannot be undone.",
+                "Permanently Delete Account", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (opt != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            UserDAO userDAO = new UserDAO();
+            userDAO.permanentlyDelete(user.getUserId());
+            // Permanently delete the linked patient row if it was trashed with the account.
+            PatientDAO patientDAO = new PatientDAO();
+            for (Patient p : patientDAO.findTrashed()) {
+                if (p.getUserId() == user.getUserId()) {
+                    patientDAO.permanentlyDelete(p.getPatientId());
+                    break;
+                }
+            }
+            loadTrashData();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Could not delete account: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -236,6 +399,15 @@ public class TrashBinPanel extends JPanel {
         b.setPreferredSize(new Dimension(150, 34));
     }
 
+    private void styleSmallButton(JButton b, Color bg) {
+        b.setBackground(bg);
+        b.setForeground(WHITE);
+        b.setFont(new Font("SansSerif", Font.BOLD, 11));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    }
+
     // ================= SMOKE-TEST ACCESSORS =================
 
     public JTable getTrashTable() {
@@ -248,5 +420,13 @@ public class TrashBinPanel extends JPanel {
 
     public JButton getPermanentlyDeleteButton() {
         return permanentlyDeleteButton;
+    }
+
+    public JTable getAccountsTable() {
+        return accountsTable;
+    }
+
+    public DefaultTableModel getAccountsTableModel() {
+        return accountsModel;
     }
 }
