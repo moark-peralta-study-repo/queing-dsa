@@ -359,6 +359,24 @@ public class DatabaseConnection {
         );
         """;
 
+    String createSystemSettings =
+        """
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        );
+        """;
+
+    String createBackupHistory =
+        """
+        CREATE TABLE IF NOT EXISTS backup_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_path TEXT,
+            file_size INTEGER,
+            created_at TEXT
+        );
+        """;
+
     try (Connection connection = getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -377,6 +395,8 @@ public class DatabaseConnection {
       statement.executeUpdate(createNotifications);
       statement.executeUpdate(createPayments);
       statement.executeUpdate(createFeedback);
+      statement.executeUpdate(createSystemSettings);
+      statement.executeUpdate(createBackupHistory);
 
       // Migrate data from the previous (uppercase) status vocabulary so existing DBs
       // line up with the queue_entries CHECK constraint used by the staff panels.

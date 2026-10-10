@@ -35,6 +35,9 @@ hospital.db
 *.sqlite
 *.sqlite3
 
+# Database backups (created by the admin backup feature)
+backups/
+
 # Compiled output
 bin/
 out/
