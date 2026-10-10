@@ -379,6 +379,20 @@ public class DatabaseConnection {
         );
         """;
 
+    String createIncidents =
+        """
+        CREATE TABLE IF NOT EXISTS incidents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            description TEXT,
+            severity TEXT,
+            status TEXT,
+            reported_by TEXT,
+            created_at TEXT,
+            resolved_at TEXT
+        );
+        """;
+
     try (Connection connection = getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -398,6 +412,7 @@ public class DatabaseConnection {
       statement.executeUpdate(createPayments);
       statement.executeUpdate(createFeedback);
       statement.executeUpdate(createSecurityLogs);
+      statement.executeUpdate(createIncidents);
 
       // Migrate data from the previous (uppercase) status vocabulary so existing DBs
       // line up with the queue_entries CHECK constraint used by the staff panels.
