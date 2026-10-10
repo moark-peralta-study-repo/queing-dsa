@@ -1,0 +1,46 @@
+stateDiagram-v2
+    direction LR
+    state "Checked In" as CheckedIn
+    state "In Consultation" as InConsult
+    state "For Laboratory" as ForLab
+    state "For Pharmacy" as ForPharm
+    state "No Show" as NoShow
+
+    [*] --> Waiting : joinQueue()
+    note right of Waiting
+        ticket # = max+1 / dept / day
+        qr = UUID · audit: JOINED
+    end note
+
+    Waiting --> CheckedIn : advance() · audit: CALLED
+    CheckedIn --> InConsult : advance()
+    note right of CheckedIn
+        hook fires here
+        (patient at counter)
+        audit: SERVING
+    end note
+    InConsult --> Completed : advance() · audit: COMPLETED
+
+    Waiting --> NoShow : skip() · markNoShow()
+    CheckedIn --> NoShow : skip()
+    InConsult --> NoShow : skip()
+
+    Waiting --> ForLab : staff sets status
+    CheckedIn --> ForLab : staff sets status
+    InConsult --> ForLab : staff sets status
+    Waiting --> ForPharm : staff sets status
+    CheckedIn --> ForPharm : staff sets status
+    InConsult --> ForPharm : staff sets status
+    ForLab --> Waiting : back to queue
+    ForPharm --> Waiting : back to queue
+    ForLab --> NoShow : skip()
+    ForPharm --> NoShow : skip()
+
+    CheckedIn --> Discharged : staff sets status
+    InConsult --> Discharged : staff sets status
+    ForLab --> Discharged : staff sets status
+    ForPharm --> Discharged : staff sets status
+
+    Completed --> [*]
+    NoShow --> [*]
+    Discharged --> [*]

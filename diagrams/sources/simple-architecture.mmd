@@ -1,0 +1,16 @@
+flowchart LR
+    P["Patient<br/>(phone)"]
+    K["Kiosk<br/>(waiting room)"]
+    S["Staff<br/>(desktop UI)"]
+
+    API["Web API (Javalin)"]
+    SVC["Services<br/>(business logic)"]
+    DAO["DAOs (JDBC)"]
+    DB[("SQLite<br/>hospital.db")]
+
+    P --> API
+    K --> API
+    S --> SVC
+    API --> SVC
+    SVC --> DAO
+    DAO --> DB

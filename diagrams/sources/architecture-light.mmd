@@ -1,0 +1,47 @@
+flowchart TB
+    subgraph CLIENTS["Clients"]
+        direction LR
+        FLUTTER["Flutter patient app<br/><span class='sub'>mobile/ · polls ticket API</span>"]
+        SWING["Swing staff / admin UI<br/><span class='sub'>27 panels · FlatLaf + MigLayout</span>"]
+        KIOSK["Waiting-room kiosk<br/><span class='sub'>Now-Serving display board</span>"]
+    end
+
+    subgraph JVM["Single JVM process — org.hospitalqueing (Java 21 · Gradle)"]
+        subgraph WEB["Web API layer — Javalin :8080 (embedded in UI, gson JSON)"]
+            API["web/WebServer<br/>GET /api/health · /api/ticket/{token}<br/>GET /api/queue/{dept} · /api/departments<br/>POST /api/ticket · /api/queue/{dept}/advance"]
+        end
+
+        subgraph SVC["Service layer — 17 classes (business logic)"]
+            direction LR
+            QMS["QueueManagementService<br/><span class='sub'>join · advance · skip · getActiveQueue</span>"]
+            AUTH["AuthenticationService<br/><span class='sub'>salted SHA-256 · constant-time</span>"]
+            CRUD["CRUD services ×15<br/><span class='sub'>Appointment · Payment · Doctor …</span>"]
+        end
+
+        subgraph DAO["DAO layer — 15 classes (hand-written JDBC)"]
+            direction LR
+            DQ["QueueEntryDAO · QueueEventDAO"]
+            DC["Patient · User · Staff · Service …"]
+        end
+
+        DC2["database/DatabaseConnection<br/><span class='sub'>static helper · new Connection per call · jdbc:sqlite:hospital.db</span>"]
+    end
+
+    DB[("hospital.db (SQLite)<br/><span class='sub'>15 tables · schema-as-code</span>")]
+
+    MAIN["Main.java<br/><span class='sub'>init tables → SeedDemoData.seedIfEmpty → Swing → (toggle) WebServer</span>"]
+
+    FLUTTER -. "HTTP REST" .-> API
+    KIOSK -. "HTTP REST" .-> API
+    SWING -->|"direct service calls"| QMS
+    SWING -->|"direct DAO calls"| DQ
+    MAIN --> WEB
+    MAIN --> SWING
+    API --> QMS
+    API --> DC2
+    QMS --> DAO
+    AUTH --> DAO
+    CRUD --> DAO
+    DAO --> DC2
+    DC2 --> DB
+

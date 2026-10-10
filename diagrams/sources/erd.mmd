@@ -1,0 +1,149 @@
+erDiagram
+    roles {
+        INTEGER role_id PK
+        TEXT role_name UK
+    }
+    users {
+        INTEGER user_id PK
+        TEXT username UK
+        TEXT password_hash
+        INTEGER role_id FK
+        INTEGER is_active
+        TEXT created_at
+    }
+    departments {
+        INTEGER department_id PK
+        TEXT department_name UK
+        INTEGER is_active
+    }
+    patients {
+        INTEGER patient_id PK
+        INTEGER user_id FK,UK
+        TEXT first_name
+        TEXT last_name
+        TEXT middle_name
+        TEXT birth_date
+        TEXT sex
+        TEXT phone
+        TEXT deleted_at
+    }
+    staff {
+        INTEGER staff_id PK
+        INTEGER user_id FK,UK
+        TEXT first_name
+        TEXT last_name
+        INTEGER department_id FK
+    }
+    services {
+        INTEGER service_id PK
+        INTEGER department_id FK
+        TEXT service_name
+        INTEGER avg_service_minutes
+        INTEGER is_active
+    }
+    doctors {
+        INTEGER doctor_id PK
+        INTEGER department_id FK
+        TEXT first_name
+        TEXT last_name
+        TEXT license_number
+        INTEGER is_active
+    }
+    doctor_services {
+        INTEGER doctor_id PK,FK
+        INTEGER service_id PK,FK
+    }
+    counters {
+        INTEGER counter_id PK
+        INTEGER department_id FK
+        TEXT counter_name
+        TEXT room_name
+        INTEGER is_active
+    }
+    appointments {
+        INTEGER appointment_id PK
+        INTEGER patient_id FK
+        INTEGER service_id FK
+        INTEGER doctor_id FK
+        TEXT appointment_date
+        TEXT appointment_time
+        TEXT status
+        TEXT created_at
+        TEXT deleted_at
+    }
+    queue_entries {
+        INTEGER queue_id PK
+        INTEGER patient_id FK
+        INTEGER department_id FK
+        INTEGER service_id FK
+        INTEGER doctor_id FK
+        INTEGER appointment_id FK
+        INTEGER counter_id FK
+        TEXT queue_date
+        INTEGER queue_number
+        TEXT priority_type
+        TEXT status
+        TEXT qr_token UK
+        TEXT joined_at
+        TEXT called_at
+        TEXT service_started_at
+        TEXT completed_at
+        TEXT deleted_at
+    }
+    queue_events {
+        INTEGER event_id PK
+        INTEGER queue_id FK
+        INTEGER staff_id FK
+        TEXT event_type
+        TEXT notes
+        TEXT created_at
+    }
+    notifications {
+        INTEGER notification_id PK
+        INTEGER patient_id FK
+        INTEGER queue_id FK
+        TEXT channel
+        TEXT message
+        TEXT status
+        TEXT sent_at
+    }
+    payments {
+        INTEGER payment_id PK
+        INTEGER queue_id FK
+        REAL amount
+        TEXT payment_method
+        TEXT status
+        TEXT paid_at
+    }
+    feedback {
+        INTEGER feedback_id PK
+        INTEGER queue_id FK
+        INTEGER patient_id FK
+        INTEGER rating
+        TEXT comment
+        TEXT created_at
+    }
+
+    roles ||--o{ users : "grants"
+    users ||--o| patients : "is a"
+    users ||--o| staff : "is a"
+    departments ||--o{ staff : "employs"
+    departments ||--o{ services : "offers"
+    departments ||--o{ doctors : "has"
+    departments ||--o{ counters : "hosts"
+    departments ||--o{ queue_entries : "groups"
+    doctors ||--o{ doctor_services : "provides"
+    services ||--o{ doctor_services : "covers"
+    patients ||--o{ queue_entries : "joins"
+    patients ||--o{ appointments : "books"
+    patients ||--o{ notifications : "receives"
+    patients ||--o{ feedback : "gives"
+    services ||--o{ appointments : "for"
+    doctors ||--o{ appointments : "performs"
+    appointments ||--o{ queue_entries : "linked"
+    counters ||--o{ queue_entries : "serves"
+    queue_entries ||--o{ queue_events : "audited"
+    staff ||--o{ queue_events : "records"
+    queue_entries ||--o{ notifications : "triggers"
+    queue_entries ||--o{ payments : "billed"
+    queue_entries ||--o{ feedback : "rated"

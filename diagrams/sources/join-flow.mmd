@@ -1,0 +1,46 @@
+sequenceDiagram
+    autonumber
+    participant APP as Flutter app / kiosk
+    participant API as WebServer (Javalin :8080)
+    participant QMS as QueueManagementService
+    participant QED as QueueEntryDAO
+    participant EVD as QueueEventDAO
+    participant DB as hospital.db
+
+    rect rgba(34, 211, 238, 0.06)
+    Note over APP,DB: join queue — POST /api/ticket
+    APP->>API: POST /api/ticket {dept, service, priority}
+    API->>QMS: joinQueue(entry)
+    QMS->>QMS: queueDate = today, status = Waiting
+    QMS->>QED: findAll() (O(N) history scan)
+    QED-->>QMS: all entries
+    QMS->>QMS: queueNumber = max+1 per (dept, date)
+    QMS->>QMS: qrToken = UUID v4
+    QMS->>QED: save(entry)
+    QED->>DB: INSERT INTO queue_entries
+    DB-->>QED: generated queue_id
+    QMS->>EVD: logEvent(JOINED)
+    EVD->>DB: INSERT INTO queue_events
+    QMS-->>API: entry (201 + queueNumber + qrToken)
+    API-->>APP: JSON ticket
+    end
+
+    rect rgba(167, 139, 250, 0.06)
+    Note over APP,DB: track — polled every ~3 s
+    loop polling
+        APP->>API: GET /api/ticket/{token}
+        API->>QMS: getTicketStatus(qrToken)
+        QMS->>QED: find by qr_token + active queue
+        QMS-->>API: patientsAhead, est. wait, current #
+        API-->>APP: TicketStatus JSON
+    end
+    end
+
+    rect rgba(52, 211, 153, 0.06)
+    Note over APP,DB: serve — POST /api/queue/{dept}/advance
+    APP->>API: POST /api/queue/{deptId}/advance
+    API->>QMS: getActiveQueue(dept) → first Waiting
+    API->>QMS: advance(queueId)
+    QMS->>DB: Waiting → Checked In → In Consultation → Completed (one hop per call, audit each)
+    API-->>APP: updated TicketStatus
+    end
