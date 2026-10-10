@@ -324,6 +324,17 @@ public class MainFrame extends JFrame {
             }
         }
         
+        if ("ADMIN_DASHBOARD".equals(screenName)) {
+          // Coming back into the admin area (e.g. via a section's "< Back" button): reset the
+          // internal section CardLayout to the home view, otherwise the last section stays shown.
+          for (Component comp : mainContentPanel.getComponents()) {
+            if (comp instanceof AdminDashboardPanel) {
+              ((AdminDashboardPanel) comp).showAdmin("ADMIN_HOME");
+              break;
+            }
+          }
+        }
+
         if ("WAITING_ROOM".equals(screenName) && waitingRoomCard != null) {
             waitingRoomCard.refresh();
         }

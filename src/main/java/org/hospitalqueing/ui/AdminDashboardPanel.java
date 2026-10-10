@@ -7,6 +7,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import org.hospitalqueing.dao.AppointmentDAO;
+import org.hospitalqueing.database.DatabaseConnection;
 import org.hospitalqueing.dao.DepartmentDAO;
 import org.hospitalqueing.dao.DoctorDAO;
 import org.hospitalqueing.dao.PatientDAO;
@@ -27,6 +28,7 @@ public class AdminDashboardPanel extends JPanel {
   private final Color WHITE = Color.WHITE;
   private final Color TEXT_DARK = new Color(45, 55, 72);
   private final Color TEXT_MUTED = new Color(113, 128, 150);
+  private static final Color CARD_BORDER = new Color(225, 230, 235);
 
   private final MainFrame parentFrame;
   private final CardLayout adminCardLayout = new CardLayout();
@@ -119,7 +121,7 @@ public class AdminDashboardPanel extends JPanel {
     systemSettingsPanel = new AdminSystemSettingsPanel(parentFrame);
 
     homeScreen = buildHomeScreen();
-    adminContentPanel.add(homeScreen, "ADMIN_HOME");
+    adminContentPanel.add(wrapScrollable(homeScreen), "ADMIN_HOME");
     adminContentPanel.add(accountsPanel, "ADMIN_ACCOUNTS");
     adminContentPanel.add(departmentsPanel, "ADMIN_DEPARTMENTS");
     adminContentPanel.add(servicesPanel, "ADMIN_SERVICES");
@@ -182,7 +184,7 @@ public class AdminDashboardPanel extends JPanel {
     if ("ADMIN_HOME".equals(card) && homeScreen != null) {
       adminContentPanel.remove(homeScreen);
       homeScreen = buildHomeScreen();
-      adminContentPanel.add(homeScreen, "ADMIN_HOME");
+      adminContentPanel.add(wrapScrollable(homeScreen), "ADMIN_HOME");
       revalidate();
       repaint();
     }
@@ -231,93 +233,115 @@ public class AdminDashboardPanel extends JPanel {
     };
   }
 
+  /** Wraps a section panel in a scroll pane so it can grow beyond the visible height (e.g. the
+   *  home screen at 1080p) instead of clipping its lower content. */
+  private static JScrollPane wrapScrollable(JPanel panel) {
+    JScrollPane scroll = new JScrollPane(panel);
+    scroll.setBorder(null);
+    scroll.getViewport().setBackground(panel.getBackground());
+    scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+    scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    return scroll;
+  }
+
   // --- HOME SCREEN ---
   private JPanel buildHomeScreen() {
-    JPanel panel = new JPanel(new MigLayout("wrap 1, insets 30 40 30 40, fillx", "[grow, fill]", "[]30[]30[]"));
+    JPanel panel = new JPanel(new MigLayout("wrap 1, insets 24 30 24 30, fillx", "[grow, fill]", "[]18[]14[]18[]14[]"));
     panel.setBackground(BACKGROUND_LIGHT);
 
-    // A. Greeting — the actually logged-in admin account.
+    // A. Greeting — single compact line.
     org.hospitalqueing.model.User adminUser = parentFrame != null ? parentFrame.getLoggedInUser() : null;
     String adminName = (adminUser != null && adminUser.getUsername() != null) ? adminUser.getUsername() : "Admin";
     String adminRole = UiData.roleNameForUser(adminUser);
-    String roleDisplay = (adminRole != null && !adminRole.isBlank()) ? adminRole + " • Facility Management" : "Admin • Facility Management";
+    String roleDisplay = (adminRole != null && !adminRole.isBlank()) ? adminRole : "Admin";
 
-    JPanel greetingPanel = new JPanel(new MigLayout("insets 0", "[left]", "[]2[]"));
+    JPanel greetingPanel = new JPanel(new MigLayout("insets 0, gap 8, align left", "[left]", "[]"));
     greetingPanel.setOpaque(false);
-    JLabel greetingText = new JLabel("Good day,");
-    greetingText.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    greetingText.setForeground(TEXT_MUTED);
-    JLabel adminNameLbl = new JLabel(adminName);
-    adminNameLbl.setFont(new Font("SansSerif", Font.BOLD, 24));
-    adminNameLbl.setForeground(TEXT_DARK);
-    JLabel adminRoleLbl = new JLabel(roleDisplay);
+    JLabel greetingText = new JLabel("Good day, " + adminName);
+    greetingText.setFont(new Font("SansSerif", Font.BOLD, 22));
+    greetingText.setForeground(TEXT_DARK);
+    JLabel adminRoleLbl = new JLabel(roleDisplay + " • Facility Management");
     adminRoleLbl.setFont(new Font("SansSerif", Font.PLAIN, 14));
     adminRoleLbl.setForeground(TEXT_MUTED);
-    greetingPanel.add(greetingText, "wrap");
-    greetingPanel.add(adminNameLbl, "wrap");
+    greetingPanel.add(greetingText);
     greetingPanel.add(adminRoleLbl);
     panel.add(greetingPanel);
 
-    // B. Live overview metrics (from the screenshot: total patients / active users / uptime).
-    panel.add(new AdminOverviewCards(), "gaptop 10");
-
-    // B2. Live facility stats.
-    JPanel summaryContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
+    // B. Live metrics — one row: overview (patients/users/uptime) + facility stats.
+    JPanel summaryContainer = new JPanel(new MigLayout("insets 0, gap 12",
+        "[grow, fill][grow, fill][grow, fill][grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
     summaryContainer.setOpaque(false);
-    summaryContainer.add(createStatCard("Departments", String.valueOf(countSafe(() -> new DepartmentDAO().findAll().size())), "🏥", new Color(230, 244, 255), PRIMARY_BLUE));
-    summaryContainer.add(createStatCard("Doctors", String.valueOf(countSafe(() -> new DoctorDAO().findAll().size())), "🩺", new Color(235, 249, 241), new Color(46, 204, 113)));
-    summaryContainer.add(createStatCard("Staff Accounts", String.valueOf(countSafe(() -> new StaffDAO().findAll().size())), "🧑‍⚕️", new Color(255, 244, 229), new Color(230, 126, 34)));
-    summaryContainer.add(createStatCard("Open Appointments", String.valueOf(countOpenAppointments()), "📅", new Color(240, 235, 255), new Color(123, 92, 227)));
+    summaryContainer.add(overviewCard("TOTAL PATIENTS", safeCount(() -> "SELECT COUNT(*) FROM patients WHERE deleted_at IS NULL"), "🩻", new Color(230, 244, 255), PRIMARY_BLUE));
+    summaryContainer.add(overviewCard("ACTIVE USERS", safeCount(() -> "SELECT COUNT(*) FROM users WHERE is_active = 1 AND deleted_at IS NULL"), "👥", new Color(235, 249, 241), new Color(46, 204, 113)));
+    summaryContainer.add(overviewCard("UPTIME", uptimeText(), "⏱", new Color(255, 244, 229), new Color(230, 126, 34)));
+    summaryContainer.add(overviewCard("Departments", safeCount(() -> "SELECT COUNT(*) FROM departments"), "🏥", new Color(230, 244, 255), PRIMARY_BLUE));
+    summaryContainer.add(overviewCard("Doctors", safeCount(() -> "SELECT COUNT(*) FROM doctors WHERE is_active = 1"), "🩺", new Color(235, 249, 241), new Color(46, 204, 113)));
+    summaryContainer.add(overviewCard("Staff Accounts", safeCount(() -> "SELECT COUNT(*) FROM staff"), "🧑‍⚕️", new Color(255, 244, 229), new Color(230, 126, 34)));
+    summaryContainer.add(overviewCard("Open Appointments", String.valueOf(countOpenAppointments()), "📅", new Color(240, 235, 255), new Color(123, 92, 227)));
     panel.add(summaryContainer);
 
-    // C. Management quick actions.
-    JLabel actionsLabel = new JLabel("Manage");
-    actionsLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+    // C. Quick actions — every admin section in two rows of six.
+    JLabel actionsLabel = new JLabel("All Sections");
+    actionsLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
     actionsLabel.setForeground(TEXT_DARK);
-    panel.add(actionsLabel, "gaptop 10");
+    panel.add(actionsLabel);
 
-    JPanel actionsContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
+    JPanel actionsContainer = new JPanel(new MigLayout("insets 0, gap 12, wrap 6",
+        "[grow, fill][grow, fill][grow, fill][grow, fill][grow, fill][grow, fill]", "[30][30]"));
     actionsContainer.setOpaque(false);
-    actionsContainer.add(createActionCard("Accounts", "All logins: edit, roles, delete", "👥", "ADMIN_ACCOUNTS"));
+    actionsContainer.add(createActionCard("Accounts", "Edit, roles, delete logins", "👥", "ADMIN_ACCOUNTS"));
     actionsContainer.add(createActionCard("Departments", "Add or remove hospital units", "🏥", "ADMIN_DEPARTMENTS"));
     actionsContainer.add(createActionCard("Services", "What patients can book", "🩻", "ADMIN_SERVICES"));
     actionsContainer.add(createActionCard("Doctors", "Who is on roster", "🩺", "ADMIN_DOCTORS"));
     actionsContainer.add(createActionCard("Staff", "Logins & roles", "🧑‍⚕️", "ADMIN_STAFF"));
+    actionsContainer.add(createActionCard("Dept Detail", "Per-dept activity & doctors", "📋", "ADMIN_DEPT_DETAIL"));
+    actionsContainer.add(createActionCard("Live Queue", "All depts, updates 3s", "🔴", "ADMIN_LIVE_QUEUE"));
+    actionsContainer.add(createActionCard("Reports", "Activity & analytics", "📊", "ADMIN_REPORTS"));
+    actionsContainer.add(createActionCard("Security Logs", "Login & logout events", "🛡", "ADMIN_SECURITY_LOGS"));
+    actionsContainer.add(createActionCard("Incidents", "Report & track issues", "📋", "ADMIN_INCIDENTS"));
+    actionsContainer.add(createActionCard("Access Control", "Grant or revoke logins", "🔐", "ADMIN_ACCESS_CONTROL"));
+    actionsContainer.add(createActionCard("System Backup", "Backup & restore database", "💾", "ADMIN_BACKUP"));
+    actionsContainer.add(createActionCard("System Settings", "App configuration", "⚙️", "ADMIN_SETTINGS"));
     panel.add(actionsContainer);
 
-    // D. Monitor & reporting quick actions.
-    JLabel monitorLabel = new JLabel("Monitor");
-    monitorLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-    monitorLabel.setForeground(TEXT_DARK);
-    panel.add(monitorLabel, "gaptop 10");
-
-    JPanel monitorContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
-    monitorContainer.setOpaque(false);
-    monitorContainer.add(createActionCard("Dept Detail", "Per-department activity & doctors", "📋", "ADMIN_DEPT_DETAIL"));
-    monitorContainer.add(createActionCard("Live Queue", "All departments, updates 3s", "🔴", "ADMIN_LIVE_QUEUE"));
-    monitorContainer.add(createActionCard("Reports", "Activity & analytics", "📊", "ADMIN_REPORTS"));
-    panel.add(monitorContainer);
-
-    // E. Security & system quick actions.
-    JLabel securityLabel = new JLabel("Security & System");
-    securityLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
-    securityLabel.setForeground(TEXT_DARK);
-    panel.add(securityLabel, "gaptop 10");
-
-    JPanel securityContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
-    securityContainer.setOpaque(false);
-    securityContainer.add(createActionCard("Security Logs", "Login & logout events", "🛡", "ADMIN_SECURITY_LOGS"));
-    securityContainer.add(createActionCard("Incidents", "Report & track issues", "📋", "ADMIN_INCIDENTS"));
-    securityContainer.add(createActionCard("Access Control", "Grant or revoke logins", "🔐", "ADMIN_ACCESS_CONTROL"));
-    panel.add(securityContainer);
-
-    JPanel systemContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill]", "[]"));
-    systemContainer.setOpaque(false);
-    systemContainer.add(createActionCard("System Backup", "Backup & restore the database", "💾", "ADMIN_BACKUP"));
-    systemContainer.add(createActionCard("System Settings", "App configuration", "⚙️", "ADMIN_SETTINGS"));
-    panel.add(systemContainer, "gaptop 10");
-
     return panel;
+  }
+
+  private static long APP_START = System.currentTimeMillis();
+
+  private String uptimeText() {
+    long sec = (System.currentTimeMillis() - APP_START) / 1000;
+    return String.format("%02dh %02dm %02ds", sec / 3600, (sec / 60) % 60, sec % 60);
+  }
+
+  private String safeCount(java.util.function.Supplier<String> sql) {
+    try (java.sql.Connection c = DatabaseConnection.getConnection();
+        java.sql.Statement st = c.createStatement();
+        java.sql.ResultSet rs = st.executeQuery(sql.get())) {
+      return rs.next() ? String.valueOf(rs.getInt(1)) : "0";
+    } catch (Exception ex) {
+      return "—";
+    }
+  }
+
+  /** Compact overview stat card (title + big value), used on the home screen. */
+  private JPanel overviewCard(String title, String value, String icon, Color bg, Color iconColor) {
+    JPanel card = new JPanel(new MigLayout("insets 14 16, fillx", "[left]push[right]", "[]8[]"));
+    card.setBackground(bg);
+    card.setBorder(BorderFactory.createLineBorder(CARD_BORDER, 1, true));
+    JLabel titleLbl = new JLabel(title);
+    titleLbl.setFont(new Font("SansSerif", Font.BOLD, 11));
+    titleLbl.setForeground(TEXT_MUTED);
+    JLabel iconLbl = new JLabel(icon);
+    iconLbl.setFont(new Font("SansSerif", Font.PLAIN, 18));
+    iconLbl.setForeground(iconColor);
+    JLabel countLbl = new JLabel(value);
+    countLbl.setFont(new Font("SansSerif", Font.BOLD, 24));
+    countLbl.setForeground(TEXT_DARK);
+    card.add(titleLbl, "cell 0 0");
+    card.add(iconLbl, "cell 1 0");
+    card.add(countLbl, "cell 0 1, span 2");
+    return card;
   }
 
   private int countOpenAppointments() {

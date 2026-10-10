@@ -131,6 +131,7 @@ public class TrashBinPanel extends JPanel {
             }
         };
         trashTable = new JTable(tableModel);
+        TableButtons.renderButtons(trashTable);
         trashTable.setFont(new Font("SansSerif", Font.PLAIN, 14));
         trashTable.setRowHeight(38);
         trashTable.setGridColor(new Color(230, 230, 230));
@@ -168,6 +169,7 @@ public class TrashBinPanel extends JPanel {
             }
         };
         accountsTable = new JTable(accountsModel);
+        TableButtons.renderButtons(accountsTable);
         accountsTable.setFont(new Font("SansSerif", Font.PLAIN, 14));
         accountsTable.setRowHeight(36);
         accountsTable.setGridColor(new Color(230, 230, 230));

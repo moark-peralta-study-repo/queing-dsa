@@ -72,6 +72,7 @@ public class DoctorAppointmentsPanel extends JPanel {
 
     table = new JTable(tableModel);
     table.setFillsViewportHeight(true);
+    TableButtons.renderButtons(table, 5);
     table.getTableHeader().setReorderingAllowed(false);
     JScrollPane tableScroll = new JScrollPane(table);
     tableScroll.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));

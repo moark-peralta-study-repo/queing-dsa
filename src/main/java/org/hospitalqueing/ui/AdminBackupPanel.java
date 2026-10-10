@@ -154,6 +154,7 @@ public class AdminBackupPanel extends JPanel {
     backupsTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
     backupsTable.setBackground(Color.WHITE);
     backupsTable.setRowHeight(34);
+    TableButtons.renderButtons(backupsTable, 3);
     backupsTable.setIntercellSpacing(new Dimension(4, 4));
     backupsTable.setGridColor(new Color(238, 240, 244));
     backupsTable.setSelectionBackground(new Color(227, 242, 253));
