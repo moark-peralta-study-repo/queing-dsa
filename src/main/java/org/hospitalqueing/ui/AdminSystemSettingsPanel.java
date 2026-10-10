@@ -10,8 +10,8 @@ import java.sql.ResultSet;
 import org.hospitalqueing.database.DatabaseConnection;
 
 /**
- * Admin section: system settings. CCTV feed URLs for the CCTV monitor panel, the backup
- * directory (informational), and maintenance mode (persisted; behavior is planned, not wired yet).
+ * Admin section: system settings — backup directory (informational) and maintenance mode
+ * (persisted; behavior is planned, not wired yet).
  *
  * <p>All persistence is raw JDBC upserts into {@code system_settings(key, value)} — this panel
  * deliberately never imports SettingsDAO (another workstream owns it and it may land after this
@@ -26,7 +26,7 @@ public class AdminSystemSettingsPanel extends JPanel {
 
   /** Setting keys stored in system_settings. */
   static final String[] KEYS = {
-    "cctv_url_1", "cctv_url_2", "cctv_url_3", "cctv_url_4", "backup_dir", "maintenance_mode"
+    "backup_dir", "maintenance_mode"
   };
 
   private final MainFrame parentFrame;
@@ -68,24 +68,6 @@ public class AdminSystemSettingsPanel extends JPanel {
             new MigLayout(
                 "insets 30 40 30 40, wrap, gap 10, fillx", "[right][grow, fill]"));
     form.setOpaque(false);
-
-    form.add(new JLabel(""));
-    form.add(sectionHeading("CCTV Feeds"));
-
-    form.add(new JLabel("CAM 01 — Front:"));
-    form.add(makeTextField("cctv_url_1", "e.g. http://cam1/front.m3u8"));
-    form.add(new JLabel("CAM 02 — Lobby:"));
-    form.add(makeTextField("cctv_url_2", "e.g. http://cam2/lobby.m3u8"));
-    form.add(new JLabel("CAM 03 — ER:"));
-    form.add(makeTextField("cctv_url_3", "e.g. http://cam3/er.m3u8"));
-    form.add(new JLabel("CAM 04 — Pharmacy:"));
-    form.add(makeTextField("cctv_url_4", "e.g. http://cam4/pharmacy.m3u8"));
-
-    JPanel gap = new JPanel();
-    gap.setOpaque(false);
-    gap.setPreferredSize(new Dimension(0, 6));
-    form.add(gap);
-    form.add(gap);
 
     form.add(new JLabel("Maintenance Mode:"));
     form.add(makeCombo("maintenance_mode", new String[] {"OFF", "ON"}));
