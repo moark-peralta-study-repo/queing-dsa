@@ -1,6 +1,7 @@
 package org.hospitalqueing.ui;
 
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableColumnModel;
@@ -33,8 +34,8 @@ public final class TableButtons {
       @Override
       public Component getTableCellRendererComponent(JTable t, Object value, boolean selected,
           boolean focused, int row, int col) {
-        if (value instanceof JButton) {
-          return (JButton) value;
+        if (value instanceof JComponent) {
+          return (JComponent) value;
         }
         return super.getTableCellRendererComponent(t, value, selected, focused, row, col);
       }
