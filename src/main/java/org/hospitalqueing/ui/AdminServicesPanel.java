@@ -20,10 +20,10 @@ public class AdminServicesPanel extends JPanel {
   private final MainFrame parentFrame;
   private final DefaultTableModel tableModel =
       new DefaultTableModel(
-          new Object[]{"ID", "Service", "Department", "Avg (min)", "Status", ""}, 0) {
+          new Object[]{"ID", "Service", "Department", "Avg (min)", "Status", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5;
+          return false; // button column: no text editor on double-click
         }
       };
   private JComboBox<String> departmentCombo;
@@ -52,7 +52,7 @@ public class AdminServicesPanel extends JPanel {
   }
 
   private JPanel buildScrollableArea() {
-    JPanel scrollArea = new JPanel(new MigLayout("insets 30 40 30 40, fillx", "[grow, fill]", "[]16[]"));
+    JPanel scrollArea = new JPanel(new MigLayout("insets 24 30 24 30, gap 18, fill", "[520!][grow, fill]", "[grow, fill]"));
     scrollArea.setOpaque(false);
 
     JPanel formCard = new JPanel(new MigLayout("insets 20 24, wrap 4, gapx 14, gapy 12", "[110!][grow 260][grow 180][grow 140]"));
@@ -77,7 +77,9 @@ public class AdminServicesPanel extends JPanel {
 
     scrollArea.add(formCard);
 
-    JScrollPane tableScroll = new JScrollPane(new JTable(tableModel));
+    JTable theTable = new JTable(tableModel);
+    TableButtons.renderButtons(theTable, 5);
+    JScrollPane tableScroll = new JScrollPane(theTable);
     tableScroll.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
     scrollArea.add(tableScroll);
 

@@ -52,10 +52,10 @@ public class AdminAccountsPanel extends JPanel {
 
   private final DefaultTableModel tableModel =
       new DefaultTableModel(
-          new Object[]{"Username", "Role", "Name", "Active", "Created", "", ""}, 0) {
+          new Object[]{"Username", "Role", "Name", "Active", "Created", "Edit", "Delete"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5 || column == 6;
+          return false; // button columns (Edit/Delete): no text editor on double-click
         }
       };
   private JTable accountsTable;
@@ -108,6 +108,7 @@ public class AdminAccountsPanel extends JPanel {
     accountsTable = new JTable(tableModel);
     accountsTable.setFont(new Font("SansSerif", Font.PLAIN, 14));
     accountsTable.setRowHeight(38);
+    TableButtons.renderButtons(accountsTable);
     accountsTable.setGridColor(new Color(230, 230, 230));
     accountsTable.setSelectionBackground(new Color(227, 242, 253));
     accountsTable.setSelectionForeground(TEXT_DARK);

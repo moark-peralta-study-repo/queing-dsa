@@ -51,10 +51,10 @@ public class AdminBackupPanel extends JPanel {
 
   // Right card table.
   private final DefaultTableModel backupsModel =
-      new DefaultTableModel(new Object[]{"File", "Size", "Created", ""}, 0) {
+      new DefaultTableModel(new Object[]{"File", "Size", "Created", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 3;
+          return false; // button column (Restore): no text editor on double-click
         }
       };
   private JTable backupsTable;
@@ -154,6 +154,7 @@ public class AdminBackupPanel extends JPanel {
     backupsTable.setFont(new Font("SansSerif", Font.PLAIN, 13));
     backupsTable.setBackground(Color.WHITE);
     backupsTable.setRowHeight(34);
+    TableButtons.renderButtons(backupsTable, 3);
     backupsTable.setIntercellSpacing(new Dimension(4, 4));
     backupsTable.setGridColor(new Color(238, 240, 244));
     backupsTable.setSelectionBackground(new Color(227, 242, 253));

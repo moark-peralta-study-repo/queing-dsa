@@ -84,10 +84,10 @@ public class AdminDepartmentDetailPanel extends JPanel {
       };
 
   private final DefaultTableModel doctorsModel =
-      new DefaultTableModel(new Object[]{"Name", "License", "Active", ""}, 0) {
+      new DefaultTableModel(new Object[]{"Name", "License", "Active", "Actions"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 3;
+          return false; // button cells: no text editor on double-click
         }
       };
   private JLabel todayPatientsLabel;
@@ -141,9 +141,23 @@ public class AdminDepartmentDetailPanel extends JPanel {
   // --- 2. CONTENT: stat cards, history, upcoming, doctors, note ---
 
   private JPanel buildContent() {
+    // Full-screen page: everything sits in one scrollable area; sections stack and the
+    // bottom (doctors roster + note) is never clipped.
+    JPanel page = new JPanel(new BorderLayout());
+    page.setBackground(new Color(245, 247, 250));
+    JScrollPane outer = new JScrollPane(buildScrollArea());
+    outer.setBorder(null);
+    outer.getViewport().setBackground(new Color(245, 247, 250));
+    outer.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    page.add(outer, BorderLayout.CENTER);
+    return page;
+  }
+
+  private JComponent buildScrollArea() {
     JPanel scrollArea =
         new JPanel(new MigLayout("insets 24 40 24 40, fillx", "[grow, fill]", "[]16[]"));
     scrollArea.setOpaque(false);
+    scrollArea.setBackground(new Color(245, 247, 250));
 
     // 2a. Today's live stats (dept-scoped, staff-dashboard style).
     JPanel stats = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
@@ -170,6 +184,7 @@ public class AdminDepartmentDetailPanel extends JPanel {
     scrollArea.add(cardSection("Doctors in This Department", "The department's roster with license + active status. Edit updates name/license/active; Remove is blocked while the doctor still has open appointments."));
     JTable doctorsTable = styledTable(doctorsModel);
     doctorsTable.setRowHeight(36);
+    TableButtons.renderButtons(doctorsTable, 3);
     scrollArea.add(scroll(doctorsTable));
 
     // 2e. Scope note.
@@ -212,7 +227,9 @@ public class AdminDepartmentDetailPanel extends JPanel {
   private JScrollPane scroll(JTable table) {
     JScrollPane scrollPane = new JScrollPane(table);
     scrollPane.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
-    scrollPane.setPreferredSize(new Dimension(700, 220));
+    // Full width (MigLayout "fillx" + single grow column); fixed height keeps the stacked
+    // sections readable and the page scrollable instead of one giant table.
+    scrollPane.setPreferredSize(new Dimension(1850, 230));
     return scrollPane;
   }
 

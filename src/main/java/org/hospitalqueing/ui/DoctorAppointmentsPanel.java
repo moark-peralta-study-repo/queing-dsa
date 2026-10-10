@@ -34,10 +34,10 @@ public class DoctorAppointmentsPanel extends JPanel {
 
   private final MainFrame parentFrame;
   private final DefaultTableModel tableModel =
-      new DefaultTableModel(new Object[]{"Time", "Patient", "Service", "Doctor", "Status", ""}, 0) {
+      new DefaultTableModel(new Object[]{"Time", "Patient", "Service", "Doctor", "Status", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5;
+          return false; // button column: no text editor on double-click
         }
       };
   private JTable table;
@@ -72,6 +72,7 @@ public class DoctorAppointmentsPanel extends JPanel {
 
     table = new JTable(tableModel);
     table.setFillsViewportHeight(true);
+    TableButtons.renderButtons(table, 5);
     table.getTableHeader().setReorderingAllowed(false);
     JScrollPane tableScroll = new JScrollPane(table);
     tableScroll.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
