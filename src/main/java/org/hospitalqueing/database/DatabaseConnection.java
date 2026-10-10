@@ -8,6 +8,13 @@ import java.sql.Statement;
 
 public class DatabaseConnection {
 
+  private static final DatabaseConnection SINGLETON = new DatabaseConnection();
+
+  /** The shared instance (used by DAOs, per the shared conventions). */
+  public static DatabaseConnection getSingleton() {
+    return SINGLETON;
+  }
+
   private static final String DB_URL = "jdbc:sqlite:hospital.db";
 
   public static Connection getConnection() throws SQLException {
@@ -359,6 +366,19 @@ public class DatabaseConnection {
         );
         """;
 
+    String createSecurityLogs =
+        """
+        CREATE TABLE IF NOT EXISTS security_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT,
+            username TEXT,
+            role TEXT,
+            success INTEGER,
+            host TEXT,
+            created_at TEXT
+        );
+        """;
+
     try (Connection connection = getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -377,6 +397,7 @@ public class DatabaseConnection {
       statement.executeUpdate(createNotifications);
       statement.executeUpdate(createPayments);
       statement.executeUpdate(createFeedback);
+      statement.executeUpdate(createSecurityLogs);
 
       // Migrate data from the previous (uppercase) status vocabulary so existing DBs
       // line up with the queue_entries CHECK constraint used by the staff panels.
@@ -395,6 +416,10 @@ public class DatabaseConnection {
       // column on staff (the accounts edit dialog manages it). No-ops when present.
       migrateAccountsSoftDelete(statement);
       migrateStaffPhone(statement);
+
+      // Security logs (admin security panel): the table is CREATE-IF-NOT-EXISTS above, so this is
+      // just a guarded belt-and-braces for very old DBs. No-op when the table already exists.
+      migrateSecurityLogs(statement);
 
       System.out.println("Database initialized successfully.");
 
@@ -491,6 +516,32 @@ public class DatabaseConnection {
   private static void migrateAccountsSoftDelete(Statement statement) throws SQLException {
     addDeletedAtColumn(statement, "users");
     addDeletedAtColumn(statement, "patients");
+  }
+
+  /**
+   * Creates the {@code security_logs} table on existing databases that predate it (the boot
+   * schema above is CREATE-IF-NOT-EXISTS, so no ALTER is needed). Safe to run on every startup
+   * (no-op once the table exists).
+   */
+  private static void migrateSecurityLogs(Statement statement) throws SQLException {
+    try (ResultSet rs = statement.executeQuery("PRAGMA table_info(security_logs)")) {
+      if (rs.next()) {
+        return; // table already exists
+      }
+    }
+    statement.executeUpdate(
+        """
+        CREATE TABLE IF NOT EXISTS security_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT,
+            username TEXT,
+            role TEXT,
+            success INTEGER,
+            host TEXT,
+            created_at TEXT
+        );
+        """);
+    System.out.println("Migrated schema: created security_logs table (admin security logs)");
   }
 
   /**
