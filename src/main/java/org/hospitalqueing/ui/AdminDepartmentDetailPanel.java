@@ -154,8 +154,10 @@ public class AdminDepartmentDetailPanel extends JPanel {
   }
 
   private JComponent buildScrollArea() {
+    // "wrap 1" = one section per row → vertical flex-column stack, each section full-width.
+    // (Without wrap, MigLayout lays all children out in a single horizontal row.)
     JPanel scrollArea =
-        new JPanel(new MigLayout("insets 24 40 24 40, fillx", "[grow, fill]", "[]16[]"));
+        new JPanel(new MigLayout("insets 24 40 24 40, wrap 1, fillx", "[grow, fill]", "[]16[]"));
     scrollArea.setOpaque(false);
     scrollArea.setBackground(new Color(245, 247, 250));
 
