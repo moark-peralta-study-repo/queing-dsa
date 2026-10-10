@@ -31,6 +31,7 @@ public class AdminOverviewCards extends JPanel {
   public AdminOverviewCards() {
     setLayout(new BorderLayout());
     setBackground(BACKGROUND_LIGHT);
+    add(getOverviewPanel(), BorderLayout.NORTH);
   }
 
   // ================= RAW JDBC COUNTS =================
