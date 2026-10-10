@@ -141,11 +141,9 @@ public class AdminDepartmentDetailPanel extends JPanel {
   // --- 2. CONTENT: stat cards, history, upcoming, doctors, note ---
 
   private JPanel buildContent() {
-    // Full-screen page: everything sits in one scrollable area; sections stack and the
-    // bottom (doctors roster + note) is never clipped.
     JPanel page = new JPanel(new BorderLayout());
     page.setBackground(new Color(245, 247, 250));
-    JScrollPane outer = new JScrollPane(buildScrollArea());
+    JScrollPane outer = new JScrollPane(buildColumn());
     outer.setBorder(null);
     outer.getViewport().setBackground(new Color(245, 247, 250));
     outer.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
@@ -153,16 +151,17 @@ public class AdminDepartmentDetailPanel extends JPanel {
     return page;
   }
 
-  private JComponent buildScrollArea() {
-    // "wrap 1" = one section per row → vertical flex-column stack, each section full-width.
-    // (Without wrap, MigLayout lays all children out in a single horizontal row.)
-    JPanel scrollArea =
-        new JPanel(new MigLayout("insets 24 40 24 40, wrap 1, fillx", "[grow, fill]", "[]16[]"));
-    scrollArea.setOpaque(false);
-    scrollArea.setBackground(new Color(245, 247, 250));
+  private JComponent buildColumn() {
+    // Plain BoxLayout(Y_AXIS) column — no wrap/row semantics: every section is added
+    // strictly top-to-bottom, stretched to full width; the outer scroll pane handles overflow.
+    JPanel col = new JPanel();
+    col.setLayout(new BoxLayout(col, BoxLayout.Y_AXIS));
+    col.setOpaque(false);
+    col.setBackground(new Color(245, 247, 250));
+    col.setBorder(BorderFactory.createEmptyBorder(24, 40, 24, 40));
 
-    // 2a. Today's live stats (dept-scoped, staff-dashboard style).
-    JPanel stats = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
+    // 2a. Today's live stats (the one intentionally-horizontal row of cards).
+    JPanel stats = new JPanel(new MigLayout("insets 0, gap 16, fillx", "[grow, fill][grow, fill][grow, fill]", "[]"));
     stats.setOpaque(false);
     todayPatientsLabel = createCountLabel("0");
     inQueueLabel = createCountLabel("0");
@@ -170,24 +169,37 @@ public class AdminDepartmentDetailPanel extends JPanel {
     stats.add(statCard("Today's Patients", todayPatientsLabel, "👥", new Color(230, 244, 255), PRIMARY_BLUE));
     stats.add(statCard("In Queue", inQueueLabel, "🕒", new Color(255, 244, 229), new Color(230, 126, 34)));
     stats.add(statCard("Completed", completedLabel, "✅", new Color(235, 249, 241), new Color(46, 204, 113)));
-    scrollArea.add(stats);
+    stats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+    stats.setPreferredSize(new Dimension(600, 120));
+    stats.setMinimumSize(new Dimension(600, 120));
+    stats.setAlignmentX(0f);
+    col.add(stats);
+
+    col.add(Box.createRigidArea(new Dimension(0, 16)));
 
     // 2b. Queue + appointment history (merged sources, dept-scoped).
-    scrollArea.add(cardSection("Today's Queue + Appointment History", "Every queue entry and every appointment created today in this department — the merged, dept-scoped history staff sees."));
-    JTable historyTable = styledTable(historyModel);
-    scrollArea.add(scroll(historyTable));
+    col.add(cardSection("Today's Queue + Appointment History", "Every queue entry and every appointment created today in this department — the merged, dept-scoped history staff sees."));
+    col.add(Box.createRigidArea(new Dimension(0, 8)));
+    col.add(scroll(styledTable(historyModel)));
+
+    col.add(Box.createRigidArea(new Dimension(0, 16)));
 
     // 2c. Upcoming appointments.
-    scrollArea.add(cardSection("Upcoming Appointments", "SCHEDULED / CONFIRMED bookings for this department's services, today or later."));
-    JTable upcomingTable = styledTable(upcomingModel);
-    scrollArea.add(scroll(upcomingTable));
+    col.add(cardSection("Upcoming Appointments", "SCHEDULED / CONFIRMED bookings for this department's services, today or later."));
+    col.add(Box.createRigidArea(new Dimension(0, 8)));
+    col.add(scroll(styledTable(upcomingModel)));
+
+    col.add(Box.createRigidArea(new Dimension(0, 16)));
 
     // 2d. Doctors in this department.
-    scrollArea.add(cardSection("Doctors in This Department", "The department's roster with license + active status. Edit updates name/license/active; Remove is blocked while the doctor still has open appointments."));
+    col.add(cardSection("Doctors in This Department", "The department's roster with license + active status. Edit updates name/license/active; Remove is blocked while the doctor still has open appointments."));
+    col.add(Box.createRigidArea(new Dimension(0, 8)));
     JTable doctorsTable = styledTable(doctorsModel);
     doctorsTable.setRowHeight(36);
     TableButtons.renderButtons(doctorsTable, 3);
-    scrollArea.add(scroll(doctorsTable));
+    col.add(scroll(doctorsTable));
+
+    col.add(Box.createRigidArea(new Dimension(0, 16)));
 
     // 2e. Scope note.
     JPanel note = new JPanel(new MigLayout("insets 14 20, fillx", "[grow, left]"));
@@ -197,9 +209,21 @@ public class AdminDepartmentDetailPanel extends JPanel {
     noteLbl.setFont(new Font("SansSerif", Font.PLAIN, 12));
     noteLbl.setForeground(TEXT_DARK);
     note.add(noteLbl);
-    scrollArea.add(note);
+    note.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+    note.setPreferredSize(new Dimension(600, 70));
+    note.setMinimumSize(new Dimension(600, 70));
+    note.setAlignmentX(0f);
+    col.add(note);
 
-    return scrollArea;
+    return col;
+  }
+
+  /** Stretches a column child to the box's full width (BoxLayout honors max size). */
+  private void stretch(JComponent c, int height) {
+    c.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
+    c.setPreferredSize(new Dimension(600, height));
+    c.setMinimumSize(new Dimension(600, height));
+    c.setAlignmentX(0f);
   }
 
   /** Card with a bold title + muted subtitle (the white section header used by the doctor panels). */
@@ -215,6 +239,10 @@ public class AdminDepartmentDetailPanel extends JPanel {
     s.setForeground(TEXT_MUTED);
     card.add(t, "wrap");
     card.add(s, "push");
+    card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 96));
+    card.setPreferredSize(new Dimension(600, 96));
+    card.setMinimumSize(new Dimension(600, 96));
+    card.setAlignmentX(0f);
     return card;
   }
 
@@ -229,9 +257,11 @@ public class AdminDepartmentDetailPanel extends JPanel {
   private JScrollPane scroll(JTable table) {
     JScrollPane scrollPane = new JScrollPane(table);
     scrollPane.setBorder(BorderFactory.createLineBorder(new Color(225, 230, 235), 1, true));
-    // Full width (MigLayout "fillx" + single grow column); fixed height keeps the stacked
-    // sections readable and the page scrollable instead of one giant table.
-    scrollPane.setPreferredSize(new Dimension(1850, 230));
+    // BoxLayout column: stretch each section to the viewport's full width (no fixed pixel
+    // width — BoxLayout clamps children to the box width), and pin the table height so the
+    // sections never collapse; overflow scrolls via the outer scroll pane.
+    scrollPane.setAlignmentX(0f);
+    stretch(scrollPane, 230);
     return scrollPane;
   }
 
