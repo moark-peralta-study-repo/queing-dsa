@@ -125,9 +125,26 @@ public class AdminDashboardPanel extends JPanel {
     logoutBtn.addActionListener(e -> {
       int choice = JOptionPane.showConfirmDialog(this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
       if (choice == JOptionPane.YES_OPTION) {
+        recordLogoutEvent();
         parentFrame.triggerLogout();
       }
     });
+  }
+
+  /** Security logs: record the logout (best-effort, never blocks logout). */
+  private void recordLogoutEvent() {
+    try {
+      org.hospitalqueing.model.User user = parentFrame.getLoggedInUser();
+      if (user == null) return;
+      String role = "";
+      try {
+        org.hospitalqueing.model.Role r = new org.hospitalqueing.dao.RoleDAO().findById(user.getRoleId());
+        if (r != null) role = r.getRoleName();
+      } catch (Exception ignored) {}
+      new org.hospitalqueing.dao.SecurityLogDAO(org.hospitalqueing.database.DatabaseConnection.getSingleton())
+          .insert(new org.hospitalqueing.model.SecurityLog(
+              org.hospitalqueing.model.SecurityLog.LOGOUT, user.getUsername(), role, true));
+    } catch (Exception ignored) {}
   }
 
   /** Switch admin section (called from header nav). The home section rebuilds so its stats are live. */
