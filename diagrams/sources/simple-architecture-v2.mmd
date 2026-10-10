@@ -1,0 +1,28 @@
+flowchart LR
+    A["Flutter Patient App<br/><span class='sub'>phone · polls ticket status</span>"]
+    B["Waiting-Room Kiosk<br/><span class='sub'>Now-Serving display</span>"]
+    C["Staff Desktop UI<br/><span class='sub'>runs in-process</span>"]
+
+    subgraph SYS[" "
+        D["Web API<br/><span class='sub'>HTTP · JSON</span>"]
+        E["Services<br/><span class='sub'>queue business logic</span>"]
+        F["Data Access<br/><span class='sub'>SQL (JDBC)</span>"]
+        D --> E --> F
+    end
+
+    G[("SQLite Database<br/><span class='sub'>hospital.db</span>")]
+
+    A -.->|"REST"| D
+    B -.->|"REST"| D
+    C -->|"direct calls"| E
+    F --> G
+
+    classDef client fill:#083344,stroke:#22d3ee,color:#fff;
+    classDef neutral fill:#1e293b,stroke:#94a3b8,color:#fff;
+    classDef svc fill:#064e3b,stroke:#34d399,color:#fff;
+    classDef db fill:#4c1d95,stroke:#a78bfa,color:#fff;
+    class A,B client;
+    class C neutral;
+    class D,E,F svc;
+    class G db;
+    linkStyle default stroke:#64748b,stroke-width:1.5px;

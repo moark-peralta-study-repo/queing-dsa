@@ -31,9 +31,14 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         setTitle("Hospital Management System");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 600);
+
+        // Size to the screen's native resolution (1080p is the floor).
+        Dimension nativeSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension min = new Dimension(1920, 1080);
+        setSize(nativeSize.width >= min.width && nativeSize.height >= min.height ? nativeSize : min);
+        setMinimumSize(min);
+        setResizable(true);
         setLocationRelativeTo(null);
-        setResizable(false);
         setLayout(new BorderLayout());
 
         // --- 1. PERSISTENT GLOBAL NAVBAR (Landing Page Only) ---

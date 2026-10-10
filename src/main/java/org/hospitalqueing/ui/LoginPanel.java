@@ -2,7 +2,12 @@ package org.hospitalqueing.ui;
 
 import net.miginfocom.swing.MigLayout;
 import org.hospitalqueing.service.AuthenticationService;
+import org.hospitalqueing.dao.RoleDAO;
+import org.hospitalqueing.dao.SecurityLogDAO;
 import org.hospitalqueing.dao.UserDAO;
+import org.hospitalqueing.database.DatabaseConnection;
+import org.hospitalqueing.model.Role;
+import org.hospitalqueing.model.SecurityLog;
 import org.hospitalqueing.model.User;
 
 import javax.swing.*;
@@ -147,6 +152,8 @@ public class LoginPanel extends JPanel {
                 User loggedInUser = authService.login(username, password);
 
                 if (loggedInUser != null) {
+                    // Security logs: record the successful login (never affects login behavior).
+                    recordLoginEvent(username, SecurityLog.LOGIN_SUCCESS, roleForUser(loggedInUser));
                     // T7: persist (or forget) the remembered username. Only the username is
                     // stored -- never the password and never its hash.
                     RememberMeStore.writeUsername(rememberMe.isSelected() ? loggedInUser.getUsername() : null);
@@ -155,6 +162,8 @@ public class LoginPanel extends JPanel {
                     clearFields();
                     JOptionPane.showMessageDialog(this, "Login Successful! Welcome back, " + loggedInUser.getUsername());
                 } else {
+                    // Security logs: record the failed login (never affects login behavior).
+                    recordLoginEvent(username, SecurityLog.LOGIN_FAIL, "");
                     JOptionPane.showMessageDialog(this, "Invalid username or password.", "Login Failed", JOptionPane.ERROR_MESSAGE);
                 }
             } catch (Exception ex) {
@@ -162,6 +171,26 @@ public class LoginPanel extends JPanel {
                 JOptionPane.showMessageDialog(this, "Login Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
+    }
+
+    /** Inserts a LOGIN_SUCCESS/LOGIN_FAIL security-log row; a failure to log must never block login. */
+    private void recordLoginEvent(String username, String action, String role) {
+        try {
+            SecurityLogDAO dao = new SecurityLogDAO(DatabaseConnection.getSingleton());
+            dao.insert(new SecurityLog(action, username, role, SecurityLog.LOGIN_SUCCESS.equals(action)));
+        } catch (Exception ignored) {
+            // Logging is best-effort.
+        }
+    }
+
+    /** The role name for a user's role id, or "" when unresolved. */
+    private static String roleForUser(User user) {
+        try {
+            Role role = new RoleDAO().findById(user.getRoleId());
+            return role == null ? "" : role.getRoleName();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     public void clearFields() {

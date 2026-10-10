@@ -1,0 +1,98 @@
+erDiagram
+    roles {
+        INTEGER role_id PK
+        TEXT role_name
+    }
+    users {
+        INTEGER user_id PK
+        TEXT username
+        INTEGER role_id FK
+    }
+    departments {
+        INTEGER department_id PK
+        TEXT department_name
+    }
+    patients {
+        INTEGER patient_id PK
+        INTEGER user_id FK
+    }
+    staff {
+        INTEGER staff_id PK
+        INTEGER user_id FK
+        INTEGER department_id FK
+    }
+    services {
+        INTEGER service_id PK
+        INTEGER department_id FK
+        INTEGER avg_service_minutes
+    }
+    doctors {
+        INTEGER doctor_id PK
+        INTEGER department_id FK
+    }
+    doctor_services {
+        INTEGER doctor_id PK,FK
+        INTEGER service_id PK,FK
+    }
+    counters {
+        INTEGER counter_id PK
+        INTEGER department_id FK
+    }
+    appointments {
+        INTEGER appointment_id PK
+        INTEGER patient_id FK
+        INTEGER service_id FK
+        INTEGER doctor_id FK
+    }
+    queue_entries {
+        INTEGER queue_id PK
+        INTEGER patient_id FK
+        INTEGER department_id FK
+        INTEGER service_id FK
+        INTEGER appointment_id FK
+        INTEGER counter_id FK
+        INTEGER queue_number
+        TEXT priority_type
+        TEXT status
+        TEXT qr_token
+    }
+    queue_events {
+        INTEGER event_id PK
+        INTEGER queue_id FK
+        TEXT event_type
+    }
+    notifications {
+        INTEGER notification_id PK
+        INTEGER patient_id FK
+        INTEGER queue_id FK
+    }
+    payments {
+        INTEGER payment_id PK
+        INTEGER queue_id FK
+        REAL amount
+    }
+    feedback {
+        INTEGER feedback_id PK
+        INTEGER queue_id FK
+        INTEGER rating
+    }
+
+    roles ||--o{ users : "grants"
+    users ||--o| patients : "is a"
+    users ||--o| staff : "is a"
+    departments ||--o{ staff : "employs"
+    departments ||--o{ services : "offers"
+    departments ||--o{ doctors : "has"
+    departments ||--o{ counters : "hosts"
+    doctors ||--o{ doctor_services : "provides"
+    services ||--o{ doctor_services : "covers"
+    patients ||--o{ queue_entries : "joins"
+    patients ||--o{ appointments : "books"
+    services ||--o{ appointments : "for"
+    doctors ||--o{ appointments : "performs"
+    appointments ||--o{ queue_entries : "linked"
+    counters ||--o{ queue_entries : "serves"
+    queue_entries ||--o{ queue_events : "audited"
+    queue_entries ||--o{ notifications : "triggers"
+    queue_entries ||--o{ payments : "billed"
+    queue_entries ||--o{ feedback : "rated"

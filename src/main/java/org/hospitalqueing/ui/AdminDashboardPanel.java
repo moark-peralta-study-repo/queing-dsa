@@ -40,6 +40,11 @@ public class AdminDashboardPanel extends JPanel {
   private final AdminAccountsPanel accountsPanel;
   private final AdminDepartmentDetailPanel departmentDetailPanel;
   private final AdminLiveQueuePanel liveQueuePanel;
+  private final AdminSecurityLogsPanel securityLogsPanel;
+  private final AdminIncidentsPanel incidentsPanel;
+  private final AdminAccessControlPanel accessControlPanel;
+  private final AdminBackupPanel backupPanel;
+  private final AdminSystemSettingsPanel systemSettingsPanel;
   private JPanel homeScreen;
 
   public AdminDashboardPanel(MainFrame parentFrame) {
@@ -48,7 +53,7 @@ public class AdminDashboardPanel extends JPanel {
     setBackground(BACKGROUND_LIGHT);
 
     // --- 1. ADMIN HEADER (Dark Blue Nav) ---
-    JPanel headerPanel = new JPanel(new MigLayout("insets 15 20 15 20, aligny center", "[left]push[center]20[center]20[center]20[center]20[center]20[center]20[center]20[center]push[right]", "[center]"));
+    JPanel headerPanel = new JPanel(new MigLayout("insets 15 20 15 20, aligny center", "[left]push[center]15[center]15[center]15[center]15[center]15[center]15[center]15[center]15[center]15[center]15[center]15[center]push[right]", "[center]"));
     headerPanel.setBackground(HEADER_DARK_BLUE);
     headerPanel.add(new JLabel(" "), "cell 0 0");
 
@@ -61,6 +66,11 @@ public class AdminDashboardPanel extends JPanel {
     JLabel deptDetailNav = createHeaderLink("DEPT DETAIL", false);
     JLabel liveQueueNav = createHeaderLink("LIVE QUEUE", false);
     JLabel reportsNav = createHeaderLink("REPORTS", false);
+    JLabel securityLogsNav = createHeaderLink("SECURITY", false);
+    JLabel incidentsNav = createHeaderLink("INCIDENTS", false);
+    JLabel accessNav = createHeaderLink("ACCESS", false);
+    JLabel backupNav = createHeaderLink("BACKUP", false);
+    JLabel settingsNav = createHeaderLink("SETTINGS", false);
 
     headerPanel.add(homeNav, "cell 1 0");
     headerPanel.add(accountsNav, "cell 2 0");
@@ -71,6 +81,11 @@ public class AdminDashboardPanel extends JPanel {
     headerPanel.add(deptDetailNav, "cell 7 0");
     headerPanel.add(liveQueueNav, "cell 8 0");
     headerPanel.add(reportsNav, "cell 9 0");
+    headerPanel.add(securityLogsNav, "cell 10 0");
+    headerPanel.add(incidentsNav, "cell 11 0");
+    headerPanel.add(accessNav, "cell 12 0");
+    headerPanel.add(backupNav, "cell 13 0");
+    headerPanel.add(settingsNav, "cell 14 0");
 
     JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
     rightControls.setOpaque(false);
@@ -81,7 +96,7 @@ public class AdminDashboardPanel extends JPanel {
     logoutBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
     logoutBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     rightControls.add(logoutBtn);
-    headerPanel.add(rightControls, "cell 10 0");
+    headerPanel.add(rightControls, "cell 15 0");
 
     add(headerPanel, BorderLayout.NORTH);
 
@@ -97,6 +112,11 @@ public class AdminDashboardPanel extends JPanel {
     accountsPanel = new AdminAccountsPanel(parentFrame);
     departmentDetailPanel = new AdminDepartmentDetailPanel(parentFrame);
     liveQueuePanel = new AdminLiveQueuePanel(parentFrame);
+    securityLogsPanel = new AdminSecurityLogsPanel(parentFrame);
+    incidentsPanel = new AdminIncidentsPanel(parentFrame);
+    accessControlPanel = new AdminAccessControlPanel(parentFrame);
+    backupPanel = new AdminBackupPanel(parentFrame);
+    systemSettingsPanel = new AdminSystemSettingsPanel(parentFrame);
 
     homeScreen = buildHomeScreen();
     adminContentPanel.add(homeScreen, "ADMIN_HOME");
@@ -108,6 +128,11 @@ public class AdminDashboardPanel extends JPanel {
     adminContentPanel.add(departmentDetailPanel, "ADMIN_DEPT_DETAIL");
     adminContentPanel.add(liveQueuePanel, "ADMIN_LIVE_QUEUE");
     adminContentPanel.add(reportsPanel, "ADMIN_REPORTS");
+    adminContentPanel.add(securityLogsPanel, "ADMIN_SECURITY_LOGS");
+    adminContentPanel.add(incidentsPanel, "ADMIN_INCIDENTS");
+    adminContentPanel.add(accessControlPanel, "ADMIN_ACCESS_CONTROL");
+    adminContentPanel.add(backupPanel, "ADMIN_BACKUP");
+    adminContentPanel.add(systemSettingsPanel, "ADMIN_SETTINGS");
 
     add(adminContentPanel, BorderLayout.CENTER);
 
@@ -121,13 +146,35 @@ public class AdminDashboardPanel extends JPanel {
     deptDetailNav.addMouseListener(onClick(() -> showAdmin("ADMIN_DEPT_DETAIL")));
     liveQueueNav.addMouseListener(onClick(() -> showAdmin("ADMIN_LIVE_QUEUE")));
     reportsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_REPORTS")));
+    securityLogsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_SECURITY_LOGS")));
+    incidentsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_INCIDENTS")));
+    accessNav.addMouseListener(onClick(() -> showAdmin("ADMIN_ACCESS_CONTROL")));
+    backupNav.addMouseListener(onClick(() -> showAdmin("ADMIN_BACKUP")));
+    settingsNav.addMouseListener(onClick(() -> showAdmin("ADMIN_SETTINGS")));
 
     logoutBtn.addActionListener(e -> {
       int choice = JOptionPane.showConfirmDialog(this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
       if (choice == JOptionPane.YES_OPTION) {
+        recordLogoutEvent();
         parentFrame.triggerLogout();
       }
     });
+  }
+
+  /** Security logs: record the logout (best-effort, never blocks logout). */
+  private void recordLogoutEvent() {
+    try {
+      org.hospitalqueing.model.User user = parentFrame.getLoggedInUser();
+      if (user == null) return;
+      String role = "";
+      try {
+        org.hospitalqueing.model.Role r = new org.hospitalqueing.dao.RoleDAO().findById(user.getRoleId());
+        if (r != null) role = r.getRoleName();
+      } catch (Exception ignored) {}
+      new org.hospitalqueing.dao.SecurityLogDAO(org.hospitalqueing.database.DatabaseConnection.getSingleton())
+          .insert(new org.hospitalqueing.model.SecurityLog(
+              org.hospitalqueing.model.SecurityLog.LOGOUT, user.getUsername(), role, true));
+    } catch (Exception ignored) {}
   }
 
   /** Switch admin section (called from header nav). The home section rebuilds so its stats are live. */
@@ -147,6 +194,18 @@ public class AdminDashboardPanel extends JPanel {
     }
     if ("ADMIN_DEPT_DETAIL".equals(card) && departmentDetailPanel != null) {
       departmentDetailPanel.refresh();
+    }
+    if ("ADMIN_SECURITY_LOGS".equals(card) && securityLogsPanel != null) {
+      securityLogsPanel.loadLogs();
+    }
+    if ("ADMIN_INCIDENTS".equals(card) && incidentsPanel != null) {
+      incidentsPanel.load();
+    }
+    if ("ADMIN_ACCESS_CONTROL".equals(card) && accessControlPanel != null) {
+      accessControlPanel.load();
+    }
+    if ("ADMIN_BACKUP".equals(card) && backupPanel != null) {
+      backupPanel.refresh();
     }
     // AdminLiveQueuePanel runs its own 3s Swing Timer; no manual refresh needed on show.
     adminCardLayout.show(adminContentPanel, card);
@@ -199,7 +258,10 @@ public class AdminDashboardPanel extends JPanel {
     greetingPanel.add(adminRoleLbl);
     panel.add(greetingPanel);
 
-    // B. Live facility stats.
+    // B. Live overview metrics (from the screenshot: total patients / active users / uptime).
+    panel.add(new AdminOverviewCards(), "gaptop 10");
+
+    // B2. Live facility stats.
     JPanel summaryContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill][grow, fill]", "[]"));
     summaryContainer.setOpaque(false);
     summaryContainer.add(createStatCard("Departments", String.valueOf(countSafe(() -> new DepartmentDAO().findAll().size())), "🏥", new Color(230, 244, 255), PRIMARY_BLUE));
@@ -235,6 +297,25 @@ public class AdminDashboardPanel extends JPanel {
     monitorContainer.add(createActionCard("Live Queue", "All departments, updates 3s", "🔴", "ADMIN_LIVE_QUEUE"));
     monitorContainer.add(createActionCard("Reports", "Activity & analytics", "📊", "ADMIN_REPORTS"));
     panel.add(monitorContainer);
+
+    // E. Security & system quick actions.
+    JLabel securityLabel = new JLabel("Security & System");
+    securityLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+    securityLabel.setForeground(TEXT_DARK);
+    panel.add(securityLabel, "gaptop 10");
+
+    JPanel securityContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill][grow, fill]", "[]"));
+    securityContainer.setOpaque(false);
+    securityContainer.add(createActionCard("Security Logs", "Login & logout events", "🛡", "ADMIN_SECURITY_LOGS"));
+    securityContainer.add(createActionCard("Incidents", "Report & track issues", "📋", "ADMIN_INCIDENTS"));
+    securityContainer.add(createActionCard("Access Control", "Grant or revoke logins", "🔐", "ADMIN_ACCESS_CONTROL"));
+    panel.add(securityContainer);
+
+    JPanel systemContainer = new JPanel(new MigLayout("insets 0, gap 16", "[grow, fill][grow, fill]", "[]"));
+    systemContainer.setOpaque(false);
+    systemContainer.add(createActionCard("System Backup", "Backup & restore the database", "💾", "ADMIN_BACKUP"));
+    systemContainer.add(createActionCard("System Settings", "App configuration", "⚙️", "ADMIN_SETTINGS"));
+    panel.add(systemContainer, "gaptop 10");
 
     return panel;
   }

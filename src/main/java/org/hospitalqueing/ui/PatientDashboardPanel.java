@@ -15,11 +15,13 @@ public class PatientDashboardPanel extends JPanel {
     private JButton appointmentBtn;
     private JButton queueBtn;
     private JButton logoutBtn;
+    private final MainFrame parentFrame;
     
     private JScrollPane scrollPane;
     private JPanel scrollContentPanel;
 
     public PatientDashboardPanel(MainFrame parentFrame) {
+        this.parentFrame = parentFrame;
         setLayout(new BorderLayout());
         setBackground(WHITE);
 
@@ -164,11 +166,27 @@ public class PatientDashboardPanel extends JPanel {
         logoutBtn.addActionListener(e -> {
             int choice = JOptionPane.showConfirmDialog(
                 this, "Are you sure you want to log out?", "Logout", JOptionPane.YES_NO_OPTION);
-            if (choice == JOptionPane.YES_OPTION) { parentFrame.triggerLogout(); }
+            if (choice == JOptionPane.YES_OPTION) { recordLogoutEvent(); parentFrame.triggerLogout(); }
         });
 
         appointmentBtn.addActionListener(e -> { parentFrame.showScreen("APPOINTMENT_PAGE"); });
         queueBtn.addActionListener(e -> { parentFrame.showScreen("QUEUE_STATUS_PAGE"); });
+    }
+
+    /** Security logs: record the logout (best-effort, never blocks logout). */
+    private void recordLogoutEvent() {
+        try {
+            org.hospitalqueing.model.User user = parentFrame.getLoggedInUser();
+            if (user == null) return;
+            String role = "";
+            try {
+                org.hospitalqueing.model.Role r = new org.hospitalqueing.dao.RoleDAO().findById(user.getRoleId());
+                if (r != null) role = r.getRoleName();
+            } catch (Exception ignored) {}
+            new org.hospitalqueing.dao.SecurityLogDAO(org.hospitalqueing.database.DatabaseConnection.getSingleton())
+                .insert(new org.hospitalqueing.model.SecurityLog(
+                    org.hospitalqueing.model.SecurityLog.LOGOUT, user.getUsername(), role, true));
+        } catch (Exception ignored) {}
     }
 
     private JPanel createDepartmentCard(String iconSymbol, String title, String description, MainFrame parentFrame) {
