@@ -23,10 +23,10 @@ public class AdminStaffPanel extends JPanel {
   private final MainFrame parentFrame;
   private final DefaultTableModel tableModel =
       new DefaultTableModel(
-          new Object[]{"ID", "Name", "Login", "Department", "Role", ""}, 0) {
+          new Object[]{"ID", "Name", "Login", "Department", "Role", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5;
+          return false; // button column: no text editor on double-click
         }
       };
   private JTextField firstNameField;

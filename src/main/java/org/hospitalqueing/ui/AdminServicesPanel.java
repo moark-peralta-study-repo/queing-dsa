@@ -20,10 +20,10 @@ public class AdminServicesPanel extends JPanel {
   private final MainFrame parentFrame;
   private final DefaultTableModel tableModel =
       new DefaultTableModel(
-          new Object[]{"ID", "Service", "Department", "Avg (min)", "Status", ""}, 0) {
+          new Object[]{"ID", "Service", "Department", "Avg (min)", "Status", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5;
+          return false; // button column: no text editor on double-click
         }
       };
   private JComboBox<String> departmentCombo;

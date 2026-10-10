@@ -161,11 +161,11 @@ public class TrashBinPanel extends JPanel {
         accountsTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
         accountsSection.add(accountsTitle, BorderLayout.NORTH);
 
-        String[] accountColumns = {"Username", "Role", "Name", "Deleted At", "", ""};
+        String[] accountColumns = {"Username", "Role", "Name", "Deleted At", "Restore", "Delete"};
         accountsModel = new DefaultTableModel(accountColumns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 4 || column == 5;
+                return false; // button columns (Restore/Delete): no text editor on double-click
             }
         };
         accountsTable = new JTable(accountsModel);

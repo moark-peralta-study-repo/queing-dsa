@@ -52,10 +52,10 @@ public class AdminAccountsPanel extends JPanel {
 
   private final DefaultTableModel tableModel =
       new DefaultTableModel(
-          new Object[]{"Username", "Role", "Name", "Active", "Created", "", ""}, 0) {
+          new Object[]{"Username", "Role", "Name", "Active", "Created", "Edit", "Delete"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5 || column == 6;
+          return false; // button columns (Edit/Delete): no text editor on double-click
         }
       };
   private JTable accountsTable;

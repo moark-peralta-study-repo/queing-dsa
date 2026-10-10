@@ -23,10 +23,10 @@ public class AdminDoctorsPanel extends JPanel {
 
   private final DefaultTableModel tableModel =
       new DefaultTableModel(
-          new Object[]{"ID", "Name", "Department", "License", "Status", ""}, 0) {
+          new Object[]{"ID", "Name", "Department", "License", "Status", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5;
+          return false; // button column: no text editor on double-click
         }
       };
   private JComboBox<String> departmentCombo;

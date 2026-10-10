@@ -51,10 +51,10 @@ public class AdminBackupPanel extends JPanel {
 
   // Right card table.
   private final DefaultTableModel backupsModel =
-      new DefaultTableModel(new Object[]{"File", "Size", "Created", ""}, 0) {
+      new DefaultTableModel(new Object[]{"File", "Size", "Created", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 3;
+          return false; // button column (Restore): no text editor on double-click
         }
       };
   private JTable backupsTable;

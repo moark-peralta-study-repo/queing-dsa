@@ -34,10 +34,10 @@ public class DoctorAppointmentsPanel extends JPanel {
 
   private final MainFrame parentFrame;
   private final DefaultTableModel tableModel =
-      new DefaultTableModel(new Object[]{"Time", "Patient", "Service", "Doctor", "Status", ""}, 0) {
+      new DefaultTableModel(new Object[]{"Time", "Patient", "Service", "Doctor", "Status", "Action"}, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-          return column == 5;
+          return false; // button column: no text editor on double-click
         }
       };
   private JTable table;
