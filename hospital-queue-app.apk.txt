@@ -1,0 +1,1 @@
+Patient app (Flutter, arm64-v8a). Install on Android: allow unknown sources, then open.
